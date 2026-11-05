@@ -8,9 +8,17 @@ Source doc: https://claude.ai/artifact/81eMqtWrzcZwTudCqTHvEd
 
 ## Commands
 - npm test                 # node --test, no network, recorded fixtures only
-- npm run build            # inlines src/ into ./index.html (and ./dist), syntax-checks, enforces the size budget
+- npm run build            # bumps VERSION (1.1 -> 1.2), inlines src/ into ./index.html (and ./dist), syntax-checks, enforces the size budget
 - npm run serve            # static server on :5173 (also reachable from a phone on the same Wi-Fi)
 - npm run live             # live end-to-end check against the real APIs (zips 01810, 80202, 33101, 98101)
+
+## Versioning and release (same scheme as Studio Phone)
+- VERSION file holds e.g. `1.1`; every `npm run build` bumps the last part. `node build.mjs --version 2.0` pins a bigger one.
+- Shown top right of the app (tap it to check for an update). The app probes the live page (`?u=`) at launch and each time it
+  returns to the foreground; with nothing on screen it reloads to the new version (`?v=`), otherwise it shows "Update now".
+- public/sw.js: cache-first page for offline launch; `?u=` always goes to the network, `?v=` fetches fresh and replaces the cache.
+- Release: `npm run build`, commit, `git push`. GitHub Pages serves main at https://ebhanu-1.github.io/clearsky/ (repo ebhanu-1/clearsky).
+- US units only (°F, mph, in, mi); the metric toggle was removed.
 
 ## Layout
 - src/core.js       pure scoring engine: curves, sun position, derived features, 16 factors, 6 profiles, windows
