@@ -7,6 +7,7 @@ profile (subject distance, view direction, line of sight); five other shoot type
 The design doc is docs/design.md (export of the "Photo Clarity App" spec): Design decisions D1-D22, Data and history,
 Scoring and profiles, Build plan. docs/spikes.md records live API results and where the build departs from the doc. docs/v2.md is the v2.0 assessment,
 the research behind it and decisions V1-V13 (additions inside D9, D15, D16).
+Current status and next-iteration ideas: docs/status.md (read first when resuming).
 Source doc: https://claude.ai/artifact/81eMqtWrzcZwTudCqTHvEd
 
 ## Commands
