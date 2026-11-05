@@ -63,6 +63,9 @@
     calmMph: [[2, 1], [4, 0.8], [7, 0.4], [10, 0]],
     precipMm: [[0.05, 1], [0.3, 0.5], [1, 0.15]],
     shimmerF: [[70, 1], [80, 0.8], [90, 0.5]],
+    // Angle between the view direction and the sun (0 = looking into the sun, 180 = sun behind you).
+    // Looking toward the sun adds veiling glare and forward-scattered haze; side-on is the polarizer sweet spot.
+    viewAngle: [[0, 0.15], [30, 0.35], [60, 0.8], [90, 1], [150, 0.9], [180, 0.85]],
     // overrides
     softSky: [[10, 0.1], [40, 0.5], [70, 1]],
     softHumidity: [[30, 0.1], [50, 0.5], [70, 1]],
@@ -88,11 +91,24 @@
     return 'neutral';
   }
 
+  /* ---------- subject distance (Clarity only) ---------- */
+
+  // How far away the subject is changes what hurts: haze compounds with distance, a nearby ridge barely cares,
+  // and heat shimmer scales with focal length. Multipliers on the profile weights; "mid" is the plain profile.
+  const DISTANCE = {
+    near: { id: 'near', name: 'Near', miles: 5, blurb: 'about 5 mi: the ridge across the valley',
+      mult: { dewpoint: 0.6, particulates: 0.6, visibility: 0.4, humidity: 0.6, heatShimmer: 0.5, ventilation: 0.8 } },
+    mid: { id: 'mid', name: 'Mid', miles: 20, blurb: 'about 20 mi: the next range over', mult: {} },
+    far: { id: 'far', name: 'Far', miles: 50, blurb: '50+ mi: distant ranges and skylines',
+      mult: { dewpoint: 1.3, particulates: 1.3, visibility: 1.6, humidity: 1.3, heatShimmer: 1.6, ventilation: 1.2 } },
+  };
+  const DISTANCE_IDS = Object.keys(DISTANCE);
+
   /* ---------- profiles ---------- */
 
   const FACTOR_IDS = [
     'dewpoint', 'particulates', 'visibility', 'ventilation', 'airmass', 'rainScrub', 'windRegime', 'humidity',
-    'skyCover', 'skyColor', 'lowCloudClear', 'fogPotential', 'calm', 'precipGate', 'lightWindow', 'heatShimmer',
+    'skyCover', 'skyColor', 'lowCloudClear', 'fogPotential', 'calm', 'precipGate', 'lightWindow', 'heatShimmer', 'viewLight',
   ];
 
   const FACTOR_LABELS = {
@@ -100,12 +116,14 @@
     airmass: 'Air-mass change', rainScrub: 'Rain scrub', windRegime: 'Wind regime', humidity: 'Humidity',
     skyCover: 'Sky cover', skyColor: 'Sky color', lowCloudClear: 'Low cloud', fogPotential: 'Fog potential',
     calm: 'Calm air', precipGate: 'Precipitation', lightWindow: 'Light window', heatShimmer: 'Heat shimmer',
+    viewLight: 'Sun vs view',
   };
 
   const PROFILE_DEFS = [
     {
-      id: 'clarity', name: 'Clarity', description: 'Distant landscape and telephoto work',
-      weights: { dewpoint: 30, particulates: 18, visibility: 10, ventilation: 8, airmass: 10, rainScrub: 6, windRegime: 8, humidity: 4, skyCover: 6 },
+      id: 'clarity', name: 'Clarity', description: 'Distant landscape and telephoto work', usesDistance: true,
+      // v2: heat shimmer, low cloud and sun-vs-view direction join the haze factors (telephoto sharpness is more than haze).
+      weights: { dewpoint: 26, particulates: 17, visibility: 10, ventilation: 6, airmass: 8, rainScrub: 5, windRegime: 6, humidity: 6, skyCover: 2, lowCloudClear: 3, heatShimmer: 6, viewLight: 5 },
       // fogGate restores draft 1's "M x 0.4 for clarity" in fog; golden scenario 4 needs it (Clarity: Skip).
       gate: { floor: 0.15, fog: 0.4 },
       caps: [{ factors: ['dewpoint', 'particulates', 'visibility'], below: 0.2, max: 59 }],
@@ -369,6 +387,87 @@
     });
   }
 
+  /* ---------- view path ---------- */
+
+  // The air between you and a distant subject matters more than the air at your feet. lists = hourly record arrays
+  // (origin first, then points along the line of sight). Combine per hour: dew point and humidity average (a damp
+  // valley and a dry ridge are both part of the view), visibility takes the worst point, particulates and low cloud
+  // take the worst point (one smoke plume on the path ruins the view). Everything else stays from the origin.
+  function mergePath(lists) {
+    const base = lists[0];
+    const maps = lists.slice(1).map((l) => new Map(l.map((r) => [r.ms, r])));
+    const mean = (vals) => { const v = vals.filter(isNum); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+    const worst = (vals, fn) => { const v = vals.filter(isNum); return v.length ? fn(...v) : null; };
+    return base.map((r) => {
+      const all = [r].concat(maps.map((m) => m.get(r.ms)).filter(Boolean));
+      return Object.assign({}, r, {
+        dewC: mean(all.map((x) => x.dewC)), rh: mean(all.map((x) => x.rh)),
+        visM: worst(all.map((x) => x.visM), Math.min),
+        pm25: worst(all.map((x) => x.pm25), Math.max), pm10: worst(all.map((x) => x.pm10), Math.max),
+        aod: worst(all.map((x) => x.aod), Math.max), dust: worst(all.map((x) => x.dust), Math.max),
+        cloudLow: worst(all.map((x) => x.cloudLow), Math.max), pathPoints: all.length,
+      });
+    });
+  }
+
+  const angDiff = (a, b) => Math.abs((((a - b) % 360) + 540) % 360 - 180);
+
+  // Where to point: away from the sun. Polarizers work best 90 degrees off the sun. Overhead sun: any direction.
+  function bestViewSector(sunAzDeg, sunElevDeg) {
+    if (!isNum(sunAzDeg) || !isNum(sunElevDeg) || sunElevDeg < -4) return null;
+    if (sunElevDeg >= 50) return { any: true, polarizer: [] };
+    const c = (sunAzDeg + 180) % 360;
+    return { any: false, centerDeg: c, from: compass(c - 60), to: compass(c + 60), polarizer: [compass(sunAzDeg + 90), compass(sunAzDeg - 90)], sun: compass(sunAzDeg) };
+  }
+
+  /* ---------- moon and aurora (small extras) ---------- */
+
+  function moonInfo(ms) {
+    const SYN = 29.530588853, ref = Date.UTC(2000, 0, 6, 18, 14);
+    const age = ((((ms - ref) / 86400000) % SYN) + SYN) % SYN;
+    const frac = age / SYN;
+    const illum = (1 - Math.cos(2 * Math.PI * frac)) / 2;
+    const names = [[0.03, 'New moon'], [0.22, 'Waxing crescent'], [0.28, 'First quarter'], [0.47, 'Waxing gibbous'], [0.53, 'Full moon'],
+      [0.72, 'Waning gibbous'], [0.78, 'Last quarter'], [0.97, 'Waning crescent'], [1.01, 'New moon']];
+    const name = names.find((n) => frac < n[0])[1];
+    return { age, frac, illum, name };
+  }
+
+  // Approximate: dipole geomagnetic latitude vs the equatorward edge of the auroral oval for a Kp (NOAA table, linear fit).
+  function auroraHint(lat, lon, kp) {
+    if (!isNum(kp) || !isNum(lat) || !isNum(lon)) return null;
+    const rad = Math.PI / 180, plat = 80.65 * rad, plon = -72.68 * rad;
+    const gm = Math.asin(clamp(Math.sin(lat * rad) * Math.sin(plat) + Math.cos(lat * rad) * Math.cos(plat) * Math.cos(lon * rad - plon), -1, 1)) / rad;
+    const edge = 66.5 - 2.04 * kp;
+    const level = gm >= edge + 2 ? 'likely' : gm >= edge - 4 ? 'possible' : null;
+    return { gmLat: gm, edge, level, kp };
+  }
+
+  /* ---------- air-mass outlook ---------- */
+
+  // Daily daylight-mean dew point and the days where the air mass changes: "drying" (clean air arriving) or
+  // "moistening" (haze returning). Uses local days; hours may include the recent past for context.
+  function airMassOutlook(hours, nowMs, tz) {
+    const days = new Map();
+    for (const r of hours) {
+      if (!isNum(r.dewC)) continue;
+      const lp = localParts(r.ms, tz);
+      if (lp.hour < 8 || lp.hour > 18) continue;
+      if (!days.has(lp.date)) days.set(lp.date, []);
+      days.get(lp.date).push(r.dewC);
+    }
+    const daily = [...days].filter(([, a]) => a.length >= 6).map(([day, a]) => ({ day, dewC: a.reduce((x, y) => x + y, 0) / a.length, minC: Math.min(...a), maxC: Math.max(...a) }));
+    const today = localParts(nowMs, tz).date;
+    const events = [];
+    for (let i = 1; i < daily.length; i++) {
+      const dF = (daily[i].dewC - daily[i - 1].dewC) * 1.8;
+      if (daily[i].day < today) continue;
+      if (dF <= -8) events.push({ kind: 'drying', day: daily[i].day, fromC: daily[i - 1].dewC, toC: daily[i].dewC, deltaF: dF });
+      else if (dF >= 8) events.push({ kind: 'moistening', day: daily[i].day, fromC: daily[i - 1].dewC, toC: daily[i].dewC, deltaF: dF });
+    }
+    return { daily: daily.filter((d) => d.day >= today), events };
+  }
+
   /* ---------- derived features ---------- */
 
   // ctx: { place:{lat,lon,tz}, hours:[HourlyRecord sorted by ms], nowMs, climo, second }
@@ -376,8 +475,10 @@
     const H = ctx.hours;
     const out = new Array(H.length);
     const { lat, lon } = ctx.place;
+    const ensBy = new Map((ctx.ens || []).map((e) => [e.ms, e]));
     for (let i = 0; i < H.length; i++) {
       const r = H[i];
+      const en = ensBy.get(r.ms);
       const sun = sunPosition(lat, lon, r.ms);
       const prev24 = i >= 24 ? H[i - 24] : null;
       const prev12 = i >= 12 ? H[i - 12] : null;
@@ -396,6 +497,7 @@
         spreadC: isNum(r.tempC) && isNum(r.dewC) ? r.tempC - r.dewC : null,
         sunElevDeg: sun.elevDeg, sunAzDeg: sun.azDeg,
         dpPercentile: dewPercentile(ctx.climo, r.ms, r.dewC),
+        dewLoC: en && isNum(en.loC) ? en.loC : null, dewHiC: en && isNum(en.hiC) ? en.hiC : null,
         leadHours: ctx.nowMs != null ? Math.max(0, (r.ms - ctx.nowMs) / HOUR) : 0,
       };
     }
@@ -539,6 +641,15 @@
       if (!isNum(r.tempC) || d.sunElevDeg <= 35) return null;
       return { score: curve(CURVES.shimmerF, cToF(r.tempC)), raw: { tempC: r.tempC, elev: d.sunElevDeg } };
     },
+    // Needs a view direction (opts.bearing). Low sun looking into it is the worst case for a distant scene.
+    viewLight(x) {
+      const { d, bearing } = x;
+      if (!isNum(bearing) || d.sunElevDeg <= -4) return null;
+      const diff = angDiff(bearing, d.sunAzDeg);
+      const s = curve(CURVES.viewAngle, diff);
+      const w = clamp((50 - d.sunElevDeg) / 40, 0, 1); // full effect with a low sun, none overhead
+      return { score: 1 - w * (1 - s), raw: { diff, bearing, sunAz: d.sunAzDeg, elev: d.sunElevDeg } };
+    },
   };
 
   /* ---------- scoring ---------- */
@@ -564,13 +675,20 @@
     return f;
   }
 
-  function confidence(lead, r, second) {
+  // Lead time sets the tier; the NWS cross-check and the spread of the forecast ensemble (dew point, the biggest
+  // clarity driver) each pull it down one step. ens = { loC, hiC } is the 10th to 90th percentile of ensemble members.
+  function confidence(lead, r, second, ens) {
     let tier = lead <= 48 ? 2 : lead <= 96 ? 1 : 0;
     let note = lead <= 48 ? 'near-term forecast' : lead <= 96 ? 'forecast 2 to 4 days out' : 'forecast more than 4 days out';
     if (second && isNum(second.dewC) && isNum(r.dewC) && Math.abs(second.dewC - r.dewC) * 1.8 >= 5) {
       tier -= 1; note += '; NWS dew point differs by 5°F or more';
     } else if (second && isNum(second.cloudTotal) && isNum(r.cloudTotal) && Math.abs(second.cloudTotal - r.cloudTotal) >= 40) {
       tier -= 1; note += '; NWS cloud cover differs by 40 points or more';
+    }
+    if (ens && isNum(ens.loC) && isNum(ens.hiC)) {
+      const spreadF = (ens.hiC - ens.loC) * 1.8;
+      if (spreadF >= 10) { tier -= 1; note += '; forecast models spread the dew point over ' + Math.round(spreadF) + '°F'; }
+      else if (spreadF <= 4) note += '; forecast models agree on dew point';
     }
     tier = Math.max(0, tier);
     return { level: ['low', 'medium', 'high'][tier], note };
@@ -584,18 +702,29 @@
     const prior = WIND_PRIORS[opts.windPrior || 'neutral'] || null;
     const secondByMs = new Map((ctx.second || []).map((s) => [s.ms, s]));
     const floor = profile.gate && isNum(profile.gate.floor) ? profile.gate.floor : 0.15;
+    const bearing = isNum(opts.bearing) ? opts.bearing : null;
+    // Subject distance reweights Clarity; the weights are renormalized to 100 so "weight %" stays meaningful.
+    let weights = profile.weights;
+    const dist = profile.usesDistance && DISTANCE[opts.distance];
+    if (dist && Object.keys(dist.mult).length) {
+      const adj = {};
+      let tot = 0;
+      for (const [id, w] of Object.entries(profile.weights)) { adj[id] = w * (dist.mult[id] || 1); tot += adj[id]; }
+      weights = {};
+      for (const id of Object.keys(adj)) weights[id] = (adj[id] * 100) / tot;
+    }
     return ctx.hours.map((r, i) => {
       const d = derived[i];
-      const base = { t: r.t, ms: r.ms, profile: profile.id, derivedIndex: i };
+      const base = { t: r.t, ms: r.ms, profile: profile.id, derivedIndex: i, dewLoC: d.dewLoC, dewHiC: d.dewHiC };
       const flags = flagsFor(r, d);
-      const conf = confidence(d.leadHours, r, secondByMs.get(r.ms));
+      const conf = confidence(d.leadHours, r, secondByMs.get(r.ms), { loC: d.dewLoC, hiC: d.dewHiC });
       if (!hourIsScored(profile, r, d, ctx.place.tz)) {
         return Object.assign(base, { scored: false, score: null, band: null, factors: [], flags, confidence: conf.level, confidenceNote: conf.note, reasons: [] });
       }
       const factors = [];
       let sumW = 0, sumWS = 0;
-      for (const [id, w] of Object.entries(profile.weights)) {
-        const res = FACTORS[id]({ r, d, p: profile, prior });
+      for (const [id, w] of Object.entries(weights)) {
+        const res = FACTORS[id]({ r, d, p: profile, prior, bearing });
         if (!res) continue;
         const s = clamp(res.score, 0, 1);
         factors.push({ id, raw: res.raw, score: s, weight: w, contribution: 0 });
@@ -618,7 +747,7 @@
       const reasons = pickReasons(factors);
       return Object.assign(base, {
         scored: true, score: val, band: bandOf(val), factors, flags, capped, gate,
-        missing: Object.keys(profile.weights).filter((id) => !factors.some((f) => f.id === id)),
+        missing: Object.keys(weights).filter((id) => !factors.some((f) => f.id === id)),
         confidence: conf.level, confidenceNote: conf.note, reasons,
       });
     });
@@ -721,6 +850,7 @@
   return {
     pearson, ranks, spearman,
     HOUR, CURVES, PROFILES, PROFILE_BY_ID, FACTOR_IDS, FACTOR_LABELS, BANDS, WIND_PRIORS, FACTORS,
+    DISTANCE, DISTANCE_IDS, mergePath, angDiff, bestViewSector, moonInfo, auroraHint, airMassOutlook,
     clamp, isNum, cToF, msToMph, mToMi, compass, windPriorFor,
     curve, bandLookup, loadProfile, bandOf, bandName,
     localParts, tzOffsetMs, zonedMidnight, nextDayKey,

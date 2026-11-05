@@ -1,9 +1,13 @@
 # ClearSky
 
-Pick the day and hour before you drive. Enter a US zip code (or "lat, lon", or tap the location button) and get an
-hour-by-hour 0 to 100 score for the next 7 days, for six shoot types: **Clarity**, **Golden light**, **Fog and mist**,
-**Reflections**, **Soft light** and **Wildlife**. Every score comes with the reasons behind it, a confidence level, and
-the raw numbers so you can cross-check against any weather app.
+Clear air for distant shots. Enter a US zip code (or "lat, lon", or tap the location button) and get an hour-by-hour
+0 to 100 Clarity score for the next 7 days: will far ridges, skylines and ranges look sharp and clean, and when?
+Tell it how far the subject is and which way you are looking, and it checks the air along that line and which way to
+point relative to the sun. It also shows when dry air arrives or haze returns, how much the forecast models agree, an
+hour-by-hour layers grid (cloud layers, dew point, smoke, visibility, mixing height, wind), field notes, and a calendar
+reminder for the best window. Five other shoot types (**Golden light**, **Fog and mist**, **Reflections**,
+**Soft light**, **Wildlife**) are one tap away. Every score comes with the reasons behind it and a confidence level.
+See docs/v2.md for the assessment and design decisions.
 
 No accounts, no API keys. Data comes straight from the browser to Open-Meteo (forecast, air quality, ERA5 history),
 the National Weather Service (cross-check), Zippopotam.us and OpenStreetMap Nominatim (places).
@@ -19,7 +23,7 @@ the National Weather Service (cross-check), Zippopotam.us and OpenStreetMap Nomi
 ## Develop
 
 ```bash
-npm test          # 21 tests, no network
+npm test          # 38 tests, no network
 npm run build     # writes index.html
 npm run live      # hits the real APIs for four zips
 ```

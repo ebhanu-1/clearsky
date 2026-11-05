@@ -41,3 +41,9 @@ identifies the request in the app. The Node live check sets a descriptive UA. NW
   `src/format.js`, `src/app.js`, inlined into one `index.html` by `build.mjs`. This replaces the planned pnpm / Preact /
   Vite monorepo; the import rule (core has no I/O, providers never import core) is kept.
 - **Climatology cache** is in localStorage (about 30 KB per place), not IndexedDB.
+
+## v2.0 additions (2026-11-05)
+
+Ensemble, multi-point forecast and SWPC Kp calls were checked with curl (CORS header, size, time); results are in
+docs/v2.md. All three answer `access-control-allow-origin: *`. Clarity now uses `heatShimmer`, `lowCloudClear` and
+`viewLight`, so its weights differ from the design doc's Profiles table (decision V5); golden scenarios 1 to 5 pass unchanged.

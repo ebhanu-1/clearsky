@@ -296,7 +296,77 @@
     return { weather: normalizeForecast(wj.json), air: aj ? normalizeAir(aj.json) : [] };
   }
 
+  /* ---------- view path: weather along the line of sight ---------- */
+
+  // Points at 50% and 100% of the distance along a compass bearing (great-circle destination).
+  function pathPoints(place, bearingDeg, miles) {
+    const R = 6371, rad = Math.PI / 180;
+    const out = [];
+    for (const frac of [0.5, 1]) {
+      const d = (miles * 1.609344 * frac) / R, th = bearingDeg * rad, la = place.lat * rad, lo = place.lon * rad;
+      const la2 = Math.asin(Math.sin(la) * Math.cos(d) + Math.cos(la) * Math.sin(d) * Math.cos(th));
+      const lo2 = lo + Math.atan2(Math.sin(th) * Math.sin(d) * Math.cos(la), Math.cos(d) - Math.sin(la) * Math.sin(la2));
+      out.push({ lat: Math.round((la2 / rad) * 1000) / 1000, lon: Math.round((((lo2 / rad) + 540) % 360 - 180) * 1000) / 1000 });
+    }
+    return out;
+  }
+
+  // One weather call and one air-quality call, each with both points. Returns arrays aligned with `points`.
+  async function fetchPath(place, bearingDeg, miles, range) {
+    const r = Object.assign({ pastDays: 2, forecastDays: 7 }, range || {});
+    const pts = pathPoints(place, bearingDeg, miles);
+    const lat = pts.map((p) => p.lat).join(','), lon = pts.map((p) => p.lon).join(',');
+    const wUrl = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon + '&hourly=' + FORECAST_VARS.join(',') +
+      '&past_days=' + r.pastDays + '&forecast_days=' + r.forecastDays + '&timezone=GMT&wind_speed_unit=ms';
+    const aUrl = 'https://air-quality-api.open-meteo.com/v1/air-quality?latitude=' + lat + '&longitude=' + lon + '&hourly=' + AIR_VARS.join(',') +
+      '&past_days=' + r.pastDays + '&forecast_days=' + r.forecastDays + '&timezone=GMT';
+    const key = ckey({ lat: pts[0].lat, lon: pts[0].lon }) + ',' + ckey({ lat: pts[1].lat, lon: pts[1].lon });
+    const [w, a] = await Promise.all([
+      cachedJson('pathw:' + key, 60 * 60000, wUrl),
+      cachedJson('patha:' + key, 60 * 60000, aUrl).catch(() => null),
+    ]);
+    const list = (j) => (Array.isArray(j) ? j : [j]);
+    return {
+      points: pts, at: w.at,
+      weather: list(w.json).map(normalizeForecast),
+      air: a ? list(a.json).map((x) => { try { return normalizeAir(x); } catch (e) { return []; } }) : pts.map(() => []),
+    };
+  }
+
+  /* ---------- forecast ensemble: how much the models disagree about dew point ---------- */
+
+  // Reduces all ensemble members to hourly 10th/90th percentiles and a standard deviation (deg C).
+  function reduceEnsemble(j) {
+    const h = j && j.hourly;
+    if (!h || !Array.isArray(h.time)) throw new ProviderError('shape', 'Ensemble response has no hourly data');
+    const keys = Object.keys(h).filter((k) => k.indexOf('dew_point_2m') === 0);
+    if (keys.length < 5) throw new ProviderError('shape', 'Ensemble response has too few members');
+    const q = (sorted, p) => { const x = (sorted.length - 1) * p, lo = Math.floor(x), hi = Math.ceil(x); return sorted[lo] + (sorted[hi] - sorted[lo]) * (x - lo); };
+    return h.time.map((t, i) => {
+      const v = keys.map((k) => h[k][i]).filter(isNum).sort((a, b) => a - b);
+      if (v.length < 5) return { ms: msOf(t), loC: null, hiC: null, meanC: null, sdC: null, n: v.length };
+      const mean = v.reduce((a, b) => a + b, 0) / v.length;
+      const sd = Math.sqrt(v.reduce((a, b) => a + (b - mean) ** 2, 0) / v.length);
+      return { ms: msOf(t), loC: q(v, 0.1), hiC: q(v, 0.9), meanC: mean, sdC: sd, n: v.length };
+    });
+  }
+  async function fetchEnsemble(place) {
+    const url = 'https://ensemble-api.open-meteo.com/v1/ensemble?latitude=' + place.lat + '&longitude=' + place.lon +
+      '&hourly=dew_point_2m&models=gfs025&forecast_days=7&timezone=GMT';
+    const res = await cachedJson('ens:' + ckey(place), 3 * 60 * 60000, url, { timeoutMs: 10000, retries: 1 });
+    return { records: reduceEnsemble(res.json), at: res.at };
+  }
+
+  /* ---------- NOAA SWPC planetary K forecast (aurora hint) ---------- */
+
+  async function fetchKp() {
+    const res = await cachedJson('kp', 30 * 60000, 'https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json', { retries: 1 });
+    const rows = Array.isArray(res.json) ? res.json : [];
+    return rows.filter((x) => x && isNum(+x.kp) && x.time_tag).map((x) => ({ ms: Date.parse(x.time_tag + 'Z'), kp: +x.kp, observed: x.observed }));
+  }
+
   return {
+    pathPoints, fetchPath, reduceEnsemble, fetchEnsemble, fetchKp,
     ProviderError, cache, http, zipOk, parseLatLon, geocodeZip, reverseName, resolveTimezone, resolvePlace,
     normalizeForecast, normalizeAir, normalizeNwsGrid, durationMs, expandLayer,
     fetchForecast, fetchAirQuality, fetchClimateSeries, fetchSecondOpinion, fetchPast, FORECAST_VARS, AIR_VARS,

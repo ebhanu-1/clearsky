@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ClearSky: photo conditions by the hour</title>
-<meta name="description" content="Hour-by-hour photography conditions for any US zip code: clarity, golden light, fog, reflections, soft light and wildlife.">
+<title>ClearSky: clear air for distant shots</title>
+<meta name="description" content="Will the air be clear enough for distant landscape shots? Hour-by-hour haze, smoke, shimmer and sun-angle scoring for any US zip code, with the week ahead.">
 <meta name="theme-color" content="#173f77">
 <meta name="color-scheme" content="light">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -23,7 +23,7 @@
   <header class="top">
     <div class="brand">
       <svg width="34" height="34" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#173f77"/><circle cx="32" cy="38" r="12" fill="#f6c453"/><path d="M8 44h48" stroke="#fff" stroke-width="3" stroke-linecap="round"/><path d="M14 52h36" stroke="#8db4dc" stroke-width="3" stroke-linecap="round"/></svg>
-      <div><h1>ClearSky</h1><p class="tag">Pick the day and hour before you drive.</p></div>
+      <div><h1>ClearSky</h1><p class="tag">Clear air for distant shots.</p></div>
     </div>
     <span class="ver" id="ver" title="version · build time">__VERSION__</span>
   </header>
@@ -37,13 +37,14 @@
   <div id="chips" class="chips" hidden></div>
   <div id="updatebar" aria-live="polite"></div>
   <div id="banner" aria-live="polite"></div>
+  <nav id="tabbar" class="tabbar" aria-label="Sections" hidden></nav>
 
   <main id="app"></main>
   <noscript><p class="card">ClearSky needs JavaScript to fetch and score the forecast.</p></noscript>
 
   <footer>
-    <p>Scores are heuristics from the design doc, tuned for New England dew-point and wind habits until you calibrate them. A score is a guide to which hours deserve a closer look, not a promise.</p>
-    <p>Data: <a href="https://open-meteo.com/" rel="noopener">Open-Meteo</a> forecast, air quality and ERA5 reanalysis (Copernicus); <a href="https://www.weather.gov/" rel="noopener">NWS</a> cross-check; <a href="https://zippopotam.us/" rel="noopener">Zippopotam.us</a> and <a href="https://nominatim.org/" rel="noopener">OpenStreetMap Nominatim</a> for places. Free tiers are for personal, non-commercial use. Only coordinates leave your device; nothing is stored anywhere but this browser.</p>
+    <p>Scores are heuristics, tuned for New England dew-point and wind habits until you calibrate them in the shot log. A score is a guide to which hours deserve a closer look, not a promise. Forecast confidence comes from lead time, the spread of the forecast models and the NWS cross-check.</p>
+    <p>Data: <a href="https://open-meteo.com/" rel="noopener">Open-Meteo</a> forecast, ensemble, air quality and ERA5 reanalysis (Copernicus); <a href="https://www.swpc.noaa.gov/" rel="noopener">NOAA SWPC</a> Kp; <a href="https://www.weather.gov/" rel="noopener">NWS</a> cross-check; <a href="https://zippopotam.us/" rel="noopener">Zippopotam.us</a> and <a href="https://nominatim.org/" rel="noopener">OpenStreetMap Nominatim</a> for places. Free tiers are for personal, non-commercial use. Only coordinates leave your device; nothing is stored anywhere but this browser.</p>
     <p><label>Wind direction prior <select id="windprior"><option value="auto">Auto (Northeast US only)</option><option value="neutral">Neutral</option><option value="northeast">Northeast tuned</option></select></label></p>
   </footer>
 </div>

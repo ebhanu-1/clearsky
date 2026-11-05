@@ -1,9 +1,12 @@
 # ClearSky
 
-Single-file web app that scores hourly photography conditions for any US zip code, per shoot type (profile), from
-Open-Meteo weather and air quality plus ERA5 weather history, with an NWS cross-check.
+Single-file, mobile-first web app that answers one question for distant landscape photographers: will the air be clear
+enough for sharp, clean far shots, and when and which way should I shoot? Scores hourly conditions for any US zip code
+from Open-Meteo weather, air quality, ensemble spread and ERA5 history, with an NWS cross-check. Clarity is the primary
+profile (subject distance, view direction, line of sight); five other shoot types are secondary.
 The design doc is docs/design.md (export of the "Photo Clarity App" spec): Design decisions D1-D22, Data and history,
-Scoring and profiles, Build plan. docs/spikes.md records live API results and where the build departs from the doc.
+Scoring and profiles, Build plan. docs/spikes.md records live API results and where the build departs from the doc. docs/v2.md is the v2.0 assessment,
+the research behind it and decisions V1-V13 (additions inside D9, D15, D16).
 Source doc: https://claude.ai/artifact/81eMqtWrzcZwTudCqTHvEd
 
 ## Commands
@@ -21,10 +24,12 @@ Source doc: https://claude.ai/artifact/81eMqtWrzcZwTudCqTHvEd
 - US units only (°F, mph, in, mi); the metric toggle was removed.
 
 ## Layout
-- src/core.js       pure scoring engine: curves, sun position, derived features, 16 factors, 6 profiles, windows
-- src/providers.js  network adapters, typed ProviderError, localStorage cache, retry and timeout rules
-- src/format.js     unit formatting, time labels, plain-language reasons (rebuilt from raw SI values per unit system)
-- src/app.js        UI (DOM built with textContent only), src/style.css, src/index.template.html
+- src/core.js       pure scoring engine: curves, sun position, derived features, 17 factors, 6 profiles, windows, subject
+                    distance, view path merge, sun-vs-view direction, air-mass outlook, moon and aurora helpers
+- src/providers.js  network adapters, typed ProviderError, localStorage cache, retry and timeout rules; line-of-sight points,
+                    forecast ensemble, SWPC Kp
+- src/format.js     unit formatting, time labels, plain-language reasons, field notes, verdicts, .ics reminders
+- src/app.js        UI (DOM built with textContent only; tabs Plan / Day / Layers / More), src/style.css, src/index.template.html
 - test/             node:test suites; fixtures in test/fixtures; golden scenarios mirror the Build plan
 - public/           manifest, icons, sw.js (copied next to index.html on build)
 
@@ -35,9 +40,12 @@ Source doc: https://claude.ai/artifact/81eMqtWrzcZwTudCqTHvEd
 - A missing input drops its factor and renormalizes the weights. Never score missing as 0 or 1.
 - Changing a curve or weight means updating curve tests and golden scenarios in the same commit, with the reason.
 - Tests never call live APIs. `npm run live` is the only networked check.
+- Clarity first: new work is judged by whether it makes distant shots sharper or cleaner. Moon, aurora and the other
+  profiles are extras. Distance and direction are named choices in the UI; their numbers live in core.js (DISTANCE, CURVES).
+- Mobile first: design at 375 px, tap targets 44 px or more, desktop is the same layout with room.
 - UI: light background, one HTML file, no runtime CDN. Build must stay under 200 KB gzipped.
 - Ask before changing any decision D1-D22. Deviations so far are listed in docs/spikes.md.
 
 ## Definition of done
-Tests green, `npm run build` green, `npm run live` shows all four zips scoring with no gaps, and the page checked in a
-browser at phone width (375 px) and desktop width.
+Tests green, `npm run build` green, `npm run live` shows all four zips scoring with no gaps (it also exercises the ensemble, line-of-sight path and Kp calls),
+and the page checked in a browser at phone width (375 px) and desktop width.

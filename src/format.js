@@ -31,6 +31,65 @@
     };
   }
 
+  const COMPASS16 = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+  const dirName = (deg) => (isNum(deg) ? COMPASS16[Math.round((((deg % 360) + 360) % 360) / 22.5) % 16] : '–');
+
+  // Plain verdict for a score: what a photographer would do about it.
+  function verdict(score) {
+    if (!isNum(score)) return { id: 'none', label: 'No data' };
+    if (score >= 70) return { id: 'go', label: 'Worth the trip' };
+    if (score >= 50) return { id: 'maybe', label: 'Decent' };
+    return { id: 'wait', label: 'Wait for better' };
+  }
+
+  // Practical advice for a selected hour or window, from the factor results and the sun. Pure; returns
+  // [{ kind: 'warn' | 'good' | 'tip', text }], at most six, problems first.
+  // info = { fac: { [factorId]: { score, raw } }, flags: [], sector, bearing }
+  function fieldNotes(info, f) {
+    const fac = info.fac || {}, flags = info.flags || [], out = [];
+    const sc = (id) => (fac[id] ? fac[id].score : null);
+    const raw = (id) => (fac[id] ? fac[id].raw : null);
+    const sec = info.sector;
+    if (sec && sec.any) out.push({ kind: 'tip', text: 'The sun is high, so view direction matters little. A polarizer still works best at right angles to the sun.' });
+    else if (sec) {
+      let t = 'Point away from the sun (' + dirName(sec.centerDeg) + ' is directly away; ' + sec.from + ' to ' + sec.to + ' is a good arc). A polarizer works best toward ' + sec.polarizer.join(' or ') + '.';
+      if (isNum(info.bearing) && sc('viewLight') != null && sc('viewLight') < 0.5) t = 'You are looking toward the sun (' + dirName(info.bearing) + '), which adds glare and forward-scattered haze. Try ' + sec.from + ' to ' + sec.to + ' if the subject allows. A polarizer works best toward ' + sec.polarizer.join(' or ') + '.';
+      out.push({ kind: sc('viewLight') != null && sc('viewLight') < 0.5 ? 'warn' : 'tip', text: t });
+    }
+    if (flags.includes('smoke') && raw('particulates')) {
+      out.push({ kind: 'warn', text: 'Smoke or heavy haze (' + describeParts('particulates', -1, raw('particulates'), f).value + '). Dehaze in post will not recover detail; a nearer subject will hold up better today.' });
+    }
+    if (sc('dewpoint') != null && sc('dewpoint') < 0.35 && raw('dewpoint')) {
+      out.push({ kind: 'warn', text: 'Humid air (dew point ' + f.temp(raw('dewpoint').dewC) + '): contrast drops fast with distance, so near and mid subjects will hold up better than far ones.' });
+    } else if (sc('dewpoint') != null && sc('dewpoint') >= 0.8 && (sc('particulates') == null || sc('particulates') >= 0.7)) {
+      out.push({ kind: 'good', text: 'Dry, clean air: far ranges should keep detail and contrast.' });
+    }
+    if (flags.includes('shimmer') || (sc('heatShimmer') != null && sc('heatShimmer') < 0.8)) {
+      out.push({ kind: 'warn', text: 'Heat shimmer is likely from late morning through mid-afternoon. For long lenses, shoot early or in the last hour before sunset.' });
+    }
+    if (sc('airmass') != null && sc('airmass') >= 0.75) out.push({ kind: 'good', text: 'Drier air is moving in: the classic clear-air pattern after a front.' });
+    else if (sc('airmass') != null && sc('airmass') <= 0.25) out.push({ kind: 'warn', text: 'Moisture is building through the day, so haze will increase. Earlier is better.' });
+    if (sc('rainScrub') != null && sc('rainScrub') >= 0.8) out.push({ kind: 'good', text: 'Recent rain washed particles out of the air. The clearest hour is often right after the sky breaks.' });
+    if (sc('ventilation') != null && sc('ventilation') < 0.4) out.push({ kind: 'tip', text: 'Haze can pool in the lowest few hundred feet of air. A higher viewpoint can put you above it.' });
+    if (sc('lowCloudClear') != null && sc('lowCloudClear') < 0.4) out.push({ kind: 'tip', text: 'Low cloud may hide distant ridges. Check the view before committing to a far location.' });
+    const w = raw('windRegime');
+    if (w && isNum(w.windMs) && w.windMs * 2.2369 > 15) out.push({ kind: 'tip', text: 'Wind over 15 mph shakes long lenses. Use a faster shutter and weigh down the tripod.' });
+    const rank = { warn: 0, tip: 1, good: 2 };
+    return out.sort((a, b) => rank[a.kind] - rank[b.kind]).slice(0, 6);
+  }
+
+  // An .ics calendar entry with a reminder, so a good window turns into an alarm on the phone. Pure text.
+  function ics(ev) {
+    const esc = (t) => String(t == null ? '' : t).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+    const stamp = (ms) => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//ClearSky//EN', 'BEGIN:VEVENT',
+      'UID:' + esc(ev.uid) + '@clearsky', 'DTSTAMP:' + stamp(ev.nowMs != null ? ev.nowMs : ev.startMs),
+      'DTSTART:' + stamp(ev.startMs), 'DTEND:' + stamp(ev.endMs), 'SUMMARY:' + esc(ev.title),
+      'DESCRIPTION:' + esc(ev.desc), 'LOCATION:' + esc(ev.loc),
+      'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + esc(ev.title), 'TRIGGER:-PT' + (ev.alarmMin || 60) + 'M', 'END:VALARM',
+      'END:VEVENT', 'END:VCALENDAR'].join('\r\n') + '\r\n';
+  }
+
   const ordinal = (n) => {
     n = round(n);
     const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
@@ -105,6 +164,9 @@
       }
       case 'heatShimmer':
         return { value: 'Temperature ' + f.temp(raw.tempC) + ' with high sun', note: pos ? 'little shimmer' : 'heat shimmer softens long lenses' };
+      case 'viewLight':
+        return { value: 'Looking ' + dirName(raw.bearing) + ', sun ' + dirName(raw.sunAz) + ' ' + round(raw.elev) + '° up',
+          note: pos ? 'sun beside or behind you' : 'looking toward the sun: glare and forward-scattered haze' };
       default:
         return { value: id, note: '' };
     }
@@ -126,6 +188,7 @@
     airmass: 'the 24-hour air-mass trend', rainScrub: 'recent rain history', windRegime: 'wind', humidity: 'humidity',
     skyCover: 'cloud cover', skyColor: 'mid and high cloud', lowCloudClear: 'low cloud', fogPotential: 'fog inputs',
     calm: 'wind', precipGate: 'precipitation', lightWindow: 'sun position', heatShimmer: 'heat shimmer (sun too low)', dewpoint: 'dew point',
+    viewLight: 'view direction (not set)',
   };
 
   /* ---------- time labels ---------- */
@@ -164,5 +227,5 @@
     return h < 48 ? h + ' h ago' : Math.round(h / 24) + ' days ago';
   }
 
-  return { makeFmt, ordinal, describe, describeParts, shortReason, MISSING_TEXT, hourLabel, clockLabel, rangeLabel, weekday, dateLabel, ageLabel, parts };
+  return { makeFmt, dirName, verdict, fieldNotes, ics, ordinal, describe, describeParts, shortReason, MISSING_TEXT, hourLabel, clockLabel, rangeLabel, weekday, dateLabel, ageLabel, parts };
 });
