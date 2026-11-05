@@ -1,0 +1,18 @@
+HTTP/2 200 
+content-type: application/json; charset=utf-8
+access-control-allow-origin: *
+server: gunicorn/asgi
+x-nominatim-server: dulcy.openstreetmap.org
+accept-ranges: bytes
+age: 0
+date: Wed, 04 Nov 2026 16:13:42 GMT
+via: 1.1 varnish
+x-served-by: cache-bos-kbos510029-BOS
+x-cache: MISS
+x-cache-hits: 0
+x-timer: S1793808822.796082,VS0,VE247
+vary: accept-language, Accept-Encoding
+strict-transport-security: max-age=300
+alt-svc: h3=":443";ma=86400,h3-29=":443";ma=86400,h3-27=":443";ma=86400
+content-length: 441
+

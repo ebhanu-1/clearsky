@@ -1,0 +1,12 @@
+{
+  "name": "clearsky",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hourly photography conditions (clarity, golden light, fog, reflections, soft light, wildlife) for any US zip code. Builds to one HTML file.",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test test/",
+    "live": "node tools/live-check.mjs",
+    "serve": "node tools/serve.mjs"
+  }
+}

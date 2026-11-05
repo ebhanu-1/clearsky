@@ -1,0 +1,112 @@
+{
+    "@context": [
+        "https://geojson.org/geojson-ld/geojson-context.jsonld",
+        {
+            "@version": "1.1",
+            "wx": "https://api.weather.gov/ontology#",
+            "s": "https://schema.org/",
+            "geo": "http://www.opengis.net/ont/geosparql#",
+            "unit": "http://codes.wmo.int/common/unit/",
+            "@vocab": "https://api.weather.gov/ontology#",
+            "geometry": {
+                "@id": "s:GeoCoordinates",
+                "@type": "geo:wktLiteral"
+            },
+            "city": "s:addressLocality",
+            "state": "s:addressRegion",
+            "distance": {
+                "@id": "s:Distance",
+                "@type": "s:QuantitativeValue"
+            },
+            "bearing": {
+                "@type": "s:QuantitativeValue"
+            },
+            "value": {
+                "@id": "s:value"
+            },
+            "unitCode": {
+                "@id": "s:unitCode",
+                "@type": "@id"
+            },
+            "forecastOffice": {
+                "@type": "@id"
+            },
+            "forecastGridData": {
+                "@type": "@id"
+            },
+            "publicZone": {
+                "@type": "@id"
+            },
+            "county": {
+                "@type": "@id"
+            }
+        }
+    ],
+    "id": "https://api.weather.gov/points/42.66,-71.15",
+    "type": "Feature",
+    "geometry": {
+        "type": "Point",
+        "coordinates": [
+            -71.15,
+            42.66
+        ]
+    },
+    "properties": {
+        "@id": "https://api.weather.gov/points/42.66,-71.15",
+        "@type": "wx:Point",
+        "cwa": "BOX",
+        "type": "land",
+        "forecastOffice": "https://api.weather.gov/offices/BOX",
+        "gridId": "BOX",
+        "gridX": 66,
+        "gridY": 114,
+        "forecast": "https://api.weather.gov/gridpoints/BOX/66,114/forecast",
+        "forecastHourly": "https://api.weather.gov/gridpoints/BOX/66,114/forecast/hourly",
+        "forecastGridData": "https://api.weather.gov/gridpoints/BOX/66,114",
+        "observationStations": "https://api.weather.gov/gridpoints/BOX/66,114/stations",
+        "relativeLocation": {
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -71.1422439,
+                    42.655672
+                ]
+            },
+            "properties": {
+                "city": "Andover",
+                "state": "MA",
+                "distance": {
+                    "unitCode": "wmoUnit:m",
+                    "value": 0
+                },
+                "bearing": {
+                    "unitCode": "wmoUnit:degree_(angle)",
+                    "value": 0
+                }
+            }
+        },
+        "forecastZone": "https://api.weather.gov/zones/forecast/MAZ006",
+        "county": "https://api.weather.gov/zones/county/MAC009",
+        "fireWeatherZone": "https://api.weather.gov/zones/fire/MAZ006",
+        "timeZone": "America/New_York",
+        "radarStation": "KBOX",
+        "astronomicalData": {
+            "sunrise": "2026-11-04T06:22:30-05:00",
+            "sunset": "2026-11-04T16:33:49-05:00",
+            "transit": "2026-11-04T11:28:10-05:00",
+            "civilTwilightBegin": "2026-11-04T05:53:03-05:00",
+            "civilTwilightEnd": "2026-11-04T17:03:16-05:00",
+            "nauticalTwilightBegin": "2026-11-04T05:19:34-05:00",
+            "nauticalTwilightEnd": "2026-11-04T17:36:46-05:00",
+            "astronomicalTwilightBegin": "2026-11-04T04:46:38-05:00",
+            "astronomicalTwilightEnd": "2026-11-04T18:09:41-05:00"
+        },
+        "nwr": {
+            "transmitter": "WNG574",
+            "sameCode": "025009",
+            "areaBroadcast": "https://api.weather.gov/radio/WNG574/broadcast",
+            "pointBroadcast": "https://api.weather.gov/points/42.66,-71.15/radio"
+        }
+    }
+}

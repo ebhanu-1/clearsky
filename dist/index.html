@@ -1,0 +1,2212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ClearSky: photo conditions by the hour</title>
+<meta name="description" content="Hour-by-hour photography conditions for any US zip code: clarity, golden light, fog, reflections, soft light and wildlife.">
+<meta name="theme-color" content="#173f77">
+<meta name="color-scheme" content="light">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ClearSky">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f7f8fa; --card: #fff; --line: #dde2e8; --text: #17212b; --muted: #566270; --accent: #173f77; --accent-2: #3673b3;
+  --b-excellent: #173f77; --b-good: #3673b3; --b-fair: #8db4dc; --b-poor: #c9daee; --b-skip: #e6e9ee;
+  --warn-bg: #fff6e0; --warn-line: #e8c77a; --info-bg: #eef3f9; --focus: #0b5cd5;
+  --r: 14px; --gut: 16px;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.wrap { max-width: 1000px; margin: 0 auto; padding: 0 var(--gut) 56px; }
+h1, h2, h3 { margin: 0; line-height: 1.2; }
+h2 { font-size: 1.05rem; } h3 { font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+p { margin: 0 0 10px; }
+.muted { color: var(--muted); } .small { font-size: .85rem; } .pad { padding: 24px 12px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:disabled { opacity: .55; cursor: default; }
+
+/* band tokens */
+.band-excellent { --bg: var(--b-excellent); --fg: #fff; }
+.band-good { --bg: var(--b-good); --fg: #fff; }
+.band-fair { --bg: var(--b-fair); --fg: #0f2540; }
+.band-poor { --bg: var(--b-poor); --fg: #1b2a3a; }
+.band-skip { --bg: var(--b-skip); --fg: #3b4654; }
+.band-none { --bg: #f0f1f3; --fg: #5b6570; }
+
+/* header */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 0 10px; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand svg { flex: none; }
+.brand h1 { font-size: 1.35rem; letter-spacing: -.01em; }
+.tag { margin: 0; color: var(--muted); font-size: .85rem; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; flex: none; }
+.seg button { border: 0; background: transparent; padding: 9px 11px; min-height: 40px; font-size: .85rem; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+
+.search { display: flex; gap: 8px; margin: 6px 0 8px; }
+.search input { flex: 1; min-width: 0; font: inherit; font-size: 1.05rem; padding: 12px 14px; border: 1px solid #b9c2cc; border-radius: 12px; background: #fff; min-height: 48px; }
+.search .go { padding: 0 20px; border: 0; border-radius: 12px; background: var(--accent); color: #fff; font-weight: 600; min-height: 48px; }
+.search .icon { width: 48px; border: 1px solid #b9c2cc; border-radius: 12px; background: #fff; font-size: 1.3rem; min-height: 48px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 10px; }
+.pill { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 7px 13px; font-size: .88rem; min-height: 36px; }
+.pill.saved { border-color: #b7c9e0; background: #f1f6fc; }
+.pill.small { padding: 5px 10px; min-height: 32px; font-size: .82rem; display: inline-flex; align-items: center; gap: 6px; }
+.pill[aria-pressed="true"] { background: #f1f6fc; border-color: #9db8d9; }
+.btn { border: 1px solid #b9c2cc; background: #fff; border-radius: 10px; padding: 9px 14px; min-height: 40px; font-weight: 600; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.linkish { border: 0; background: none; padding: 0; color: var(--accent); text-decoration: underline; font-weight: 600; }
+
+.banner { border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; margin: 0 0 8px; font-size: .9rem; }
+.banner.warn { background: var(--warn-bg); border-color: var(--warn-line); }
+.banner.info { background: var(--info-bg); border-color: #cddbec; color: #34465c; }
+
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; margin: 0 0 14px; }
+.card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+.chip { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: .8rem; font-weight: 600; background: var(--bg, #eef0f3); color: var(--fg, var(--text)); }
+.chip.neutral { background: #eef3f9; color: #2a3b50; font-weight: 500; }
+.chip[class*="flag-"] { background: #f3efe6; color: #4a3d1c; font-weight: 500; }
+
+/* hero */
+.hero .place { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.hero-main { display: flex; gap: 16px; align-items: stretch; }
+.hero-score, .why-score { background: var(--bg); color: var(--fg); border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 96px; padding: 10px 8px; }
+.hero-score .num, .why-score .num { font-size: 2.6rem; font-weight: 700; line-height: 1; }
+.hero-score .lbl, .why-score .lbl { font-size: .8rem; font-weight: 600; margin-top: 4px; }
+.hero-text { min-width: 0; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.eyebrow { color: var(--muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+.when { font-size: 1.3rem; font-weight: 700; line-height: 1.2; }
+.why-lines { display: grid; gap: 4px; margin: 2px 0 2px; }
+.hl { display: flex; gap: 8px; align-items: flex-start; font-size: .92rem; color: #2c3a49; }
+.hl .sym { flex: none; width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; font-size: .8rem; line-height: 1; margin-top: 2px; }
+.hl.pos .sym { background: #2d6a4f; } .hl.neg .sym { background: #9a4a16; }
+.meta { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; font-size: .88rem; }
+.near, .badge-row { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-size: .92rem; }
+.badge-row { border-top: 0; margin-top: 8px; padding-top: 0; }
+.dots { display: inline-flex; align-items: center; gap: 3px; }
+.dots i { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid #8a96a3; display: inline-block; }
+.dots i.on { background: #4a5d73; border-color: #4a5d73; }
+.dots-text { margin-left: 4px; font-size: .78rem; color: var(--muted); }
+
+/* profiles */
+.profiles { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 10px; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
+.tab { flex: none; border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 9px 16px; min-height: 42px; font-weight: 600; }
+.tab[aria-pressed="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.compare { background: #fff; border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; margin-bottom: 14px; }
+.compare-head { margin-bottom: 6px; }
+.compare-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 10px; }
+@media (min-width: 720px) { .compare-list { grid-template-columns: repeat(3, 1fr); } }
+.cmp { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "name chip" "when chip"; gap: 0 8px; align-items: center; text-align: left; border: 0; background: none; padding: 6px 8px; border-radius: 10px; min-height: 48px; }
+.cmp.current { background: #f1f6fc; }
+.cmp-name { grid-area: name; font-weight: 600; font-size: .9rem; } .cmp-when { grid-area: when; font-size: .82rem; color: var(--muted); } .cmp .chip { grid-area: chip; }
+
+/* week strip */
+.week { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 12px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+.day { position: relative; flex: 0 0 118px; scroll-snap-align: start; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px; min-height: 176px; }
+.day.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.day.best { border-color: #6f93bf; }
+.day.lowconf .score, .day.lowconf .win { opacity: .8; }
+.day .dow { font-weight: 700; } .day .dte { color: var(--muted); font-size: .8rem; margin-top: -4px; }
+.day .score { display: flex; align-items: baseline; gap: 6px; background: var(--bg); color: var(--fg); border-radius: 8px; padding: 3px 8px; }
+.day .score b { font-size: 1.3rem; } .day .score i { font-style: normal; font-size: .72rem; font-weight: 600; }
+.day .win { font-size: .88rem; font-weight: 600; }
+.day .rs { font-size: .76rem; color: var(--muted); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.tag-best { position: absolute; top: -9px; right: 8px; background: var(--accent); color: #fff; font-size: .68rem; font-weight: 700; padding: 2px 7px; border-radius: 999px; }
+@media (min-width: 900px) { .week { display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); overflow: visible; } .day { flex: none; } }
+
+/* day panel */
+.day-panel { display: grid; gap: 14px; }
+.chart-card { margin: 0; align-self: start; } .side { display: grid; gap: 14px; align-content: start; } .side .card { margin: 0; }
+@media (min-width: 900px) { .day-panel { grid-template-columns: minmax(0, 1fr) 340px; } }
+.chartbox { width: 100%; min-height: 120px; }
+.chart { display: block; width: 100%; height: auto; overflow: visible; touch-action: manipulation; }
+.chart .grid { stroke: #e7ebf0; stroke-width: 1; }
+.chart .axis { fill: #5b6672; font-size: 11px; }
+.chart .night { fill: #eceff3; }
+.chart .bar { fill: var(--bg); stroke: rgba(15, 37, 64, .28); stroke-width: .6; }
+.chart .bar.stub { fill: #e4e7eb; stroke: none; }
+.chart .barlbl { fill: #26323f; font-size: 11px; font-weight: 600; }
+.chart .hit { fill: transparent; cursor: pointer; }
+.chart .hour:hover .hit, .chart .hour.sel .hit { fill: rgba(23, 63, 119, .08); }
+.chart .hour:focus-visible, .chart .win:focus-visible { outline: none; } .chart .hour:focus-visible .hit { stroke: var(--focus); stroke-width: 2; }
+.chart .selbox { fill: rgba(23, 63, 119, .09); stroke: var(--accent); stroke-width: 1.5; pointer-events: none; }
+.chart .dewline { stroke: #b4521f; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .dewlbl { fill: #8a3b12; font-size: 11px; font-weight: 700; paint-order: stroke; stroke: #fff; stroke-width: 3px; }
+.chart .sunline { stroke: #8a6a1c; stroke-width: 1; stroke-dasharray: 3 3; }
+.chart .sunlbl { fill: #6b5214; font-size: 10.5px; font-weight: 600; }
+.chart .fogmark { fill: #4d6a8a; }
+.chart .winrect { fill: var(--bg); stroke: rgba(15, 37, 64, .3); stroke-width: .6; }
+.chart .winlbl { fill: var(--fg); font-size: 11px; font-weight: 700; pointer-events: none; }
+.chart .win { cursor: pointer; } .chart .win.sel .winrect { stroke: var(--accent); stroke-width: 2.5; }
+.legend { font-size: .8rem; color: var(--muted); margin: 8px 0 0; }
+
+/* why */
+.why-top { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
+.why-score { min-width: 76px; padding: 8px 6px; } .why-score .num { font-size: 2rem; }
+.why-title { font-weight: 700; }
+.reasons ul { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 6px; }
+.reasons li { display: flex; gap: 8px; align-items: flex-start; font-size: .92rem; }
+.reasons .sym { flex: none; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; font-size: .9rem; line-height: 1; margin-top: 1px; }
+.reasons.good .sym { background: #2d6a4f; } .reasons.bad .sym { background: #9a4a16; }
+.flag.warn { background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 8px; padding: 8px 10px; font-size: .88rem; }
+.flags { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+.factors summary, #raw summary, #logsec summary { cursor: pointer; font-weight: 600; min-height: 36px; display: flex; align-items: center; }
+.ftable { display: grid; gap: 8px; margin-top: 8px; }
+.frow { display: grid; grid-template-columns: 112px 1fr; gap: 2px 10px; align-items: center; }
+.frow .fname { font-size: .86rem; font-weight: 600; } .frow .fname small { display: block; color: var(--muted); font-weight: 400; font-size: .75rem; }
+.frow .fbar { height: 10px; background: #edf0f3; border-radius: 6px; overflow: hidden; }
+.frow .fill { display: block; height: 100%; background: var(--accent-2); border-radius: 6px; }
+.frow .fval { grid-column: 1 / -1; font-size: .8rem; color: var(--muted); margin-top: -2px; }
+.sunrow .pill { white-space: nowrap; flex: none; }
+.sunrow > div:first-child { flex: 1 1 150px; min-width: 0; }
+.sunrow { flex-wrap: wrap; display: flex; justify-content: space-between; gap: 8px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+.sunrow:first-of-type { border-top: 0; }
+
+/* raw table, log */
+.tablewrap { overflow-x: auto; margin-top: 8px; border: 1px solid var(--line); border-radius: 10px; }
+table.raw { border-collapse: collapse; width: 100%; font-size: .82rem; min-width: 760px; }
+table.raw th, table.raw td { padding: 6px 8px; text-align: right; white-space: nowrap; border-bottom: 1px solid #edf0f3; }
+table.raw thead th { position: sticky; top: 0; background: #f4f6f8; font-weight: 600; } table.raw tbody th { text-align: left; font-weight: 600; background: #fff; position: sticky; left: 0; }
+table.raw tr.past { color: #8b95a1; }
+table.raw td.sc { background: var(--bg); color: var(--fg); font-weight: 700; text-align: center; }
+.logform { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin: 8px 0; }
+.logform label { display: grid; gap: 3px; font-size: .8rem; color: var(--muted); }
+.logform input, .logform select { font: inherit; min-height: 40px; padding: 6px 8px; border: 1px solid #b9c2cc; border-radius: 8px; background: #fff; color: var(--text); }
+.logs { display: grid; gap: 6px; margin: 10px 0; }
+.logrow { display: grid; grid-template-columns: 1fr auto auto auto; gap: 12px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; font-size: .9rem; }
+@media (max-width: 560px) { .logrow { grid-template-columns: 1fr auto; } }
+
+/* welcome / skeleton / error */
+.welcome h2 { font-size: 1.25rem; margin-bottom: 8px; }
+.types { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; margin: 12px 0; }
+.type { display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; } .type span { color: var(--muted); font-size: .86rem; }
+.error h2 { color: #8a2d12; }
+.skeleton { display: grid; gap: 12px; }
+.sk { border-radius: 14px; background: linear-gradient(90deg, #eceff3 25%, #f6f7f9 50%, #eceff3 75%); background-size: 200% 100%; animation: sh 1.4s infinite linear; }
+.sk-hero { height: 150px; } .sk-row { height: 44px; } .sk-chart { height: 280px; } .sk-days { display: flex; gap: 8px; overflow: hidden; } .sk-day { flex: 0 0 118px; height: 170px; }
+@keyframes sh { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .sk { animation: none; } * { scroll-behavior: auto !important; } }
+
+footer { color: var(--muted); font-size: .8rem; padding-top: 10px; }
+footer p { margin-bottom: 6px; }
+footer select { font: inherit; padding: 4px 6px; border-radius: 6px; border: 1px solid #b9c2cc; }
+footer a { color: var(--accent); }
+
+@media (max-width: 420px) {
+  .hero-main { flex-direction: column; } .hero-score { flex-direction: row; gap: 10px; min-height: 64px; justify-content: flex-start; padding: 8px 14px; } .hero-score .num { font-size: 2.2rem; }
+  .when { font-size: 1.15rem; } .brand h1 { font-size: 1.2rem; } .tag { display: none; }
+}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <svg width="34" height="34" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#173f77"/><circle cx="32" cy="38" r="12" fill="#f6c453"/><path d="M8 44h48" stroke="#fff" stroke-width="3" stroke-linecap="round"/><path d="M14 52h36" stroke="#8db4dc" stroke-width="3" stroke-linecap="round"/></svg>
+      <div><h1>ClearSky</h1><p class="tag">Pick the day and hour before you drive.</p></div>
+    </div>
+    <div class="seg" role="group" aria-label="Units">
+      <button type="button" data-units="us" aria-pressed="true">°F · mph</button>
+      <button type="button" data-units="si" aria-pressed="false">°C · km/h</button>
+    </div>
+  </header>
+
+  <form id="form" class="search" autocomplete="off" role="search">
+    <label class="sr" for="q">US zip code, or latitude and longitude</label>
+    <input id="q" name="q" type="text" inputmode="text" enterkeyhint="go" placeholder="ZIP code or lat, lon" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="40">
+    <button type="submit" class="go">Go</button>
+    <button type="button" id="locate" class="icon" aria-label="Use my location" title="Use my location">&#9678;</button>
+  </form>
+  <div id="chips" class="chips" hidden></div>
+  <div id="banner" aria-live="polite"></div>
+
+  <main id="app"></main>
+  <noscript><p class="card">ClearSky needs JavaScript to fetch and score the forecast.</p></noscript>
+
+  <footer>
+    <p>Scores are heuristics from the design doc, tuned for New England dew-point and wind habits until you calibrate them. A score is a guide to which hours deserve a closer look, not a promise.</p>
+    <p>Data: <a href="https://open-meteo.com/" rel="noopener">Open-Meteo</a> forecast, air quality and ERA5 reanalysis (Copernicus); <a href="https://www.weather.gov/" rel="noopener">NWS</a> cross-check; <a href="https://zippopotam.us/" rel="noopener">Zippopotam.us</a> and <a href="https://nominatim.org/" rel="noopener">OpenStreetMap Nominatim</a> for places. Free tiers are for personal, non-commercial use. Only coordinates leave your device; nothing is stored anywhere but this browser.</p>
+    <p><label>Wind direction prior <select id="windprior"><option value="auto">Auto (Northeast US only)</option><option value="neutral">Neutral</option><option value="northeast">Northeast tuned</option></select></label></p>
+  </footer>
+</div>
+<script>
+/* ClearSky core: pure scoring engine. No I/O, no network, no DOM.
+ * Internal values are SI and UTC. Anchors follow the design doc (US units) and are converted
+ * at the factor boundary; display conversion lives in the UI layer (describe() is the one helper
+ * that formats reasons for either unit system).
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.ClearSkyCore = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  const HOUR = 3600000;
+  const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+  const isNum = (x) => typeof x === 'number' && Number.isFinite(x);
+  const cToF = (c) => (c * 9) / 5 + 32;
+  const msToMph = (m) => m * 2.2369363;
+  const mToMi = (m) => m / 1609.344;
+
+  /* ---------- curves ---------- */
+
+  // Piecewise linear through ascending anchors, clamped at both ends.
+  function curve(anchors, x) {
+    if (!isNum(x)) return null;
+    const n = anchors.length;
+    if (x <= anchors[0][0]) return anchors[0][1];
+    if (x >= anchors[n - 1][0]) return anchors[n - 1][1];
+    for (let i = 1; i < n; i++) {
+      const [x1, y1] = anchors[i];
+      if (x <= x1) {
+        const [x0, y0] = anchors[i - 1];
+        return y0 + ((y1 - y0) * (x - x0)) / (x1 - x0);
+      }
+    }
+    return anchors[n - 1][1];
+  }
+
+  // Constant-per-band lookup: bands are [lo, hi, value) in ascending order.
+  function bandLookup(bands, x) {
+    if (!isNum(x)) return null;
+    for (const [lo, hi, v] of bands) if (x >= lo && x < hi) return v;
+    return bands[bands.length - 1][2];
+  }
+
+  /* ---------- curves, from the design doc ---------- */
+
+  const CURVES = {
+    dewAbsF: [[30, 1], [40, 0.85], [50, 0.5], [60, 0.15], [65, 0]],
+    dewPct: [[10, 1], [50, 0.5], [90, 0]],
+    pm25: [[5, 1], [12, 0.75], [35, 0.2], [55, 0]],
+    aod: [[0.1, 1], [0.3, 0.6], [0.6, 0.2], [1.0, 0]],
+    visMi: [[1, 0], [3, 0.25], [6, 0.6], [10, 1]],
+    pblM: [[200, 0.1], [400, 0.35], [800, 0.7], [1500, 1]],
+    dpTrendF: [[-10, 1], [-5, 0.75], [0, 0.5], [5, 0.2], [10, 0.05]],
+    windSpeedMph: [[2.5, 0.8], [3.5, 1], [15, 1], [16, 0.9], [25, 0.9], [26, 0.7]],
+    humidity: [[40, 1], [50, 0.85], [70, 0.4], [85, 0.1], [95, 0]],
+    sky: [[70, 1], [85, 0.8], [100, 0.6]],
+    skyColor: [[0, 0.3], [20, 0.6], [40, 1], [60, 1], [80, 0.5], [100, 0.15]],
+    lowCloud: [[10, 1], [30, 0.6], [60, 0.2], [80, 0]],
+    fogSpreadF: [[3, 1], [6, 0.5], [10, 0]],
+    fogRh: [[75, 0], [85, 0.4], [95, 1]],
+    fogWindMph: [[4, 1], [8, 0.4], [12, 0]],
+    fogCloud: [[60, 1], [100, 0.5]],
+    calmMph: [[2, 1], [4, 0.8], [7, 0.4], [10, 0]],
+    precipMm: [[0.05, 1], [0.3, 0.5], [1, 0.15]],
+    shimmerF: [[70, 1], [80, 0.8], [90, 0.5]],
+    // overrides
+    softSky: [[10, 0.1], [40, 0.5], [70, 1]],
+    softHumidity: [[30, 0.1], [50, 0.5], [70, 1]],
+    wildSky: [[60, 1], [100, 0.7]],
+  };
+
+  const LIGHT_BANDS = {
+    default: [[-90, -4, 0], [-4, 0, 0.8], [0, 6, 1], [6, 15, 0.8], [15, 30, 0.5], [30, 91, 0.2]],
+    fog: [[-90, -4, 0.5], [-4, 8, 1], [8, 15, 0.6], [15, 91, 0.2]],
+    wildlife: [[-90, 3, 0.6], [3, 25, 1], [25, 40, 0.6], [40, 91, 0.2]],
+  };
+
+  // Wind direction priors (direction wind blows FROM -> 0.4..1.0). Config, not code logic.
+  const WIND_PRIORS = {
+    neutral: null,
+    northeast: { N: 0.9, NE: 0.4, E: 0.25, SE: 0.2, S: 0.2, SW: 0.35, W: 0.8, NW: 1.0 },
+  };
+  const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  const compass = (deg) => COMPASS[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
+  function windPriorFor(place) {
+    // Auto: the New England tuned table only where it was tuned (Northeast US).
+    if (place && place.lat >= 38 && place.lat <= 48 && place.lon >= -80 && place.lon <= -66) return 'northeast';
+    return 'neutral';
+  }
+
+  /* ---------- profiles ---------- */
+
+  const FACTOR_IDS = [
+    'dewpoint', 'particulates', 'visibility', 'ventilation', 'airmass', 'rainScrub', 'windRegime', 'humidity',
+    'skyCover', 'skyColor', 'lowCloudClear', 'fogPotential', 'calm', 'precipGate', 'lightWindow', 'heatShimmer',
+  ];
+
+  const FACTOR_LABELS = {
+    dewpoint: 'Dew point', particulates: 'Particulates', visibility: 'Visibility', ventilation: 'Mixing height',
+    airmass: 'Air-mass change', rainScrub: 'Rain scrub', windRegime: 'Wind regime', humidity: 'Humidity',
+    skyCover: 'Sky cover', skyColor: 'Sky color', lowCloudClear: 'Low cloud', fogPotential: 'Fog potential',
+    calm: 'Calm air', precipGate: 'Precipitation', lightWindow: 'Light window', heatShimmer: 'Heat shimmer',
+  };
+
+  const PROFILE_DEFS = [
+    {
+      id: 'clarity', name: 'Clarity', description: 'Distant landscape and telephoto work',
+      weights: { dewpoint: 30, particulates: 18, visibility: 10, ventilation: 8, airmass: 10, rainScrub: 6, windRegime: 8, humidity: 4, skyCover: 6 },
+      // fogGate restores draft 1's "M x 0.4 for clarity" in fog; golden scenario 4 needs it (Clarity: Skip).
+      gate: { floor: 0.15, fog: 0.4 },
+      caps: [{ factors: ['dewpoint', 'particulates', 'visibility'], below: 0.2, max: 59 }],
+      hours: { minSunElevDeg: -4 }, curves: {},
+    },
+    {
+      id: 'golden', name: 'Golden light', description: 'Sunrise and sunset color',
+      weights: { dewpoint: 10, particulates: 10, visibility: 10, airmass: 10, rainScrub: 5, skyColor: 35, lowCloudClear: 15, calm: 5 },
+      gate: { floor: 0.15 },
+      caps: [{ factors: ['particulates', 'visibility'], below: 0.2, max: 59 }],
+      // The doc's Golden weights contain no sun-position factor, so without an hours rule a clear
+      // midday would score like sunrise. D15 says windows come from "the profile's relevant hours".
+      hours: { sunElevRange: [-4, 10] }, curves: {},
+    },
+    {
+      id: 'fog', name: 'Fog and mist', description: 'Morning fog in valleys and over water (area-level)',
+      weights: { fogPotential: 70, calm: 15, lightWindow: 15 },
+      gate: { floor: 0.3 }, caps: [],
+      hours: { localHours: [3, 9] }, curves: { lightWindow: 'fog' },
+    },
+    {
+      id: 'reflections', name: 'Reflections', description: 'Still water and mirror-like scenes',
+      weights: { dewpoint: 5, particulates: 5, visibility: 5, airmass: 5, humidity: 10, skyCover: 35, skyColor: 10, calm: 45, precipGate: 5, lightWindow: 20 },
+      gate: { floor: 0.15 }, caps: [],
+      hours: { minSunElevDeg: -4 }, curves: {},
+    },
+    {
+      id: 'soft', name: 'Soft light', description: 'Overcast, damp days for foliage and waterfalls',
+      weights: { rainScrub: 15, skyCover: 15, fogPotential: 10, calm: 15, precipGate: 15 },
+      gate: { floor: 0.6 }, caps: [],
+      hours: { minSunElevDeg: -4 },
+      curves: { skyCover: 'soft', humidity: 'soft', rainScrub: 'soft' },
+    },
+    {
+      id: 'wildlife', name: 'Wildlife', description: 'Low sun, calm air, long lenses',
+      weights: { dewpoint: 5, visibility: 5, calm: 20, precipGate: 20, lightWindow: 25, heatShimmer: 10 },
+      gate: { floor: 0.15 }, caps: [],
+      hours: { minSunElevDeg: -4 },
+      curves: { lightWindow: 'wildlife', skyCover: 'wildlife' },
+    },
+  ];
+
+  // Validates and normalizes a profile. The design doc says weights sum to 100 per profile, but three of
+  // its six columns do not (Reflections 145, Soft light 70, Wildlife 85). Scores already renormalize over
+  // available factors, so scaling to 100 keeps relative weights and satisfies the invariant.
+  function loadProfile(json) {
+    if (!json || typeof json !== 'object') throw new Error('profile must be an object');
+    const w = {};
+    let sum = 0;
+    for (const [k, v] of Object.entries(json.weights || {})) {
+      if (!FACTOR_IDS.includes(k)) throw new Error('unknown factor ' + k);
+      if (!isNum(v) || v < 0) throw new Error('bad weight for ' + k);
+      sum += v;
+    }
+    if (sum <= 0) throw new Error('weights sum to zero');
+    for (const [k, v] of Object.entries(json.weights)) if (v > 0) w[k] = (v * 100) / sum;
+    return Object.assign({}, json, { weights: w, weightSumDeclared: sum });
+  }
+
+  const PROFILES = PROFILE_DEFS.map(loadProfile);
+  const PROFILE_BY_ID = Object.fromEntries(PROFILES.map((p) => [p.id, p]));
+
+  /* ---------- bands ---------- */
+
+  const BANDS = [
+    { id: 'excellent', name: 'Excellent', min: 80 },
+    { id: 'good', name: 'Good', min: 60 },
+    { id: 'fair', name: 'Fair', min: 40 },
+    { id: 'poor', name: 'Poor', min: 20 },
+    { id: 'skip', name: 'Skip', min: -1 },
+  ];
+  function bandOf(score) {
+    if (!isNum(score)) return null;
+    for (const b of BANDS) if (score >= b.min) return b.id;
+    return 'skip';
+  }
+  const bandName = (id) => (BANDS.find((b) => b.id === id) || { name: '' }).name;
+
+  /* ---------- time zones ---------- */
+
+  const dtfCache = {};
+  function dtf(tz) {
+    if (!dtfCache[tz]) {
+      dtfCache[tz] = new Intl.DateTimeFormat('en-CA', {
+        timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', weekday: 'short',
+      });
+    }
+    return dtfCache[tz];
+  }
+  function localParts(ms, tz) {
+    const o = {};
+    for (const p of dtf(tz || 'UTC').formatToParts(new Date(ms))) o[p.type] = p.value;
+    return {
+      date: o.year + '-' + o.month + '-' + o.day, hour: +o.hour % 24, minute: +o.minute,
+      year: +o.year, month: +o.month, day: +o.day, weekday: o.weekday,
+    };
+  }
+  function tzOffsetMs(ms, tz) {
+    const p = localParts(ms, tz);
+    const asUtc = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, 0);
+    return asUtc - Math.floor(ms / 60000) * 60000;
+  }
+  // UTC ms of local midnight for 'YYYY-MM-DD' in tz (handles DST days).
+  function zonedMidnight(dayKey, tz) {
+    const [y, m, d] = dayKey.split('-').map(Number);
+    const guess = Date.UTC(y, m - 1, d);
+    let t = guess - tzOffsetMs(guess, tz);
+    t = guess - tzOffsetMs(t, tz);
+    return t;
+  }
+  function nextDayKey(dayKey) {
+    const [y, m, d] = dayKey.split('-').map(Number);
+    const t = new Date(Date.UTC(y, m - 1, d + 1));
+    return t.toISOString().slice(0, 10);
+  }
+
+  /* ---------- sun position (NOAA equations) ---------- */
+
+  function sunPosition(lat, lon, t) {
+    const ms = t instanceof Date ? t.getTime() : t;
+    const rad = Math.PI / 180;
+    const jd = ms / 86400000 + 2440587.5;
+    const T = (jd - 2451545) / 36525;
+    const L0 = (280.46646 + T * (36000.76983 + T * 0.0003032)) % 360;
+    const M = 357.52911 + T * (35999.05029 - 0.0001537 * T);
+    const e = 0.016708634 - T * (0.000042037 + 0.0000001267 * T);
+    const C =
+      Math.sin(M * rad) * (1.914602 - T * (0.004817 + 0.000014 * T)) +
+      Math.sin(2 * M * rad) * (0.019993 - 0.000101 * T) + Math.sin(3 * M * rad) * 0.000289;
+    const trueLong = L0 + C;
+    const omega = 125.04 - 1934.136 * T;
+    const lambda = trueLong - 0.00569 - 0.00478 * Math.sin(omega * rad);
+    const eps0 = 23 + (26 + (21.448 - T * (46.815 + T * (0.00059 - T * 0.001813))) / 60) / 60;
+    const eps = eps0 + 0.00256 * Math.cos(omega * rad);
+    const decl = Math.asin(Math.sin(eps * rad) * Math.sin(lambda * rad));
+    const y = Math.tan((eps * rad) / 2) ** 2;
+    const eqTime =
+      (4 / rad) *
+      (y * Math.sin(2 * L0 * rad) - 2 * e * Math.sin(M * rad) + 4 * e * y * Math.sin(M * rad) * Math.cos(2 * L0 * rad) -
+        0.5 * y * y * Math.sin(4 * L0 * rad) - 1.25 * e * e * Math.sin(2 * M * rad));
+    const d = new Date(ms);
+    const minutes = d.getUTCHours() * 60 + d.getUTCMinutes() + d.getUTCSeconds() / 60;
+    let tst = (minutes + eqTime + 4 * lon) % 1440;
+    if (tst < 0) tst += 1440;
+    let ha = tst / 4 - 180;
+    if (ha < -180) ha += 360;
+    const latR = lat * rad;
+    const cosZen = clamp(Math.sin(latR) * Math.sin(decl) + Math.cos(latR) * Math.cos(decl) * Math.cos(ha * rad), -1, 1);
+    const zen = Math.acos(cosZen);
+    let elev = 90 - zen / rad;
+    // atmospheric refraction (NOAA)
+    const te = Math.tan(elev * rad);
+    let refr = 0;
+    if (elev > 85) refr = 0;
+    else if (elev > 5) refr = (58.1 / te - 0.07 / te ** 3 + 0.000086 / te ** 5) / 3600;
+    else if (elev > -0.575) refr = (1735 + elev * (-518.2 + elev * (103.4 + elev * (-12.79 + elev * 0.711)))) / 3600;
+    else refr = -20.772 / te / 3600;
+    elev += refr;
+    const sinZen = Math.sin(zen);
+    let az;
+    if (sinZen < 1e-6) az = 180;
+    else {
+      const cosAz = clamp((Math.sin(latR) * cosZen - Math.sin(decl)) / (Math.cos(latR) * sinZen), -1, 1);
+      const a = Math.acos(cosAz) / rad;
+      az = ha > 0 ? (a + 180) % 360 : (540 - a) % 360;
+    }
+    return { elevDeg: elev, azDeg: az };
+  }
+
+  // Sunrise, sunset and golden-hour windows for a local day, scanned at 5-minute steps.
+  function sunTimes(lat, lon, dayKey, tz) {
+    const start = zonedMidnight(dayKey, tz);
+    const end = zonedMidnight(nextDayKey(dayKey), tz);
+    const step = 5 * 60000;
+    const out = { sunrise: null, sunset: null, goldenAM: [null, null], goldenPM: [null, null], blueAM: null, blueBefore: null, maxElev: -90 };
+    let prev = sunPosition(lat, lon, start).elevDeg;
+    for (let t = start + step; t <= end; t += step) {
+      const e = sunPosition(lat, lon, t).elevDeg;
+      if (e > out.maxElev) out.maxElev = e;
+      const cross = (lvl) => (prev < lvl && e >= lvl ? 1 : prev >= lvl && e < lvl ? -1 : 0);
+      const at = (lvl) => t - step + ((lvl - prev) / (e - prev)) * step;
+      if (cross(-0.833) === 1 && out.sunrise == null) out.sunrise = at(-0.833);
+      if (cross(-0.833) === -1) out.sunset = at(-0.833);
+      if (cross(-4) === 1 && out.goldenAM[0] == null) out.goldenAM[0] = at(-4);
+      if (cross(6) === 1 && out.goldenAM[1] == null) out.goldenAM[1] = at(6);
+      if (cross(6) === -1) out.goldenPM[0] = at(6);
+      if (cross(-4) === -1) out.goldenPM[1] = at(-4);
+      prev = e;
+    }
+    return out;
+  }
+
+  /* ---------- normal distribution + climatology ---------- */
+
+  function erf(x) {
+    const s = x < 0 ? -1 : 1;
+    x = Math.abs(x);
+    const t = 1 / (1 + 0.3275911 * x);
+    const y = 1 - ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+    return s * y;
+  }
+  const normCdf = (z) => 0.5 * (1 + erf(z / Math.SQRT2));
+
+  const CLIMO_BUCKETS = 53;
+  function doyOf(ms) {
+    const d = new Date(ms);
+    return Math.floor((Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - Date.UTC(d.getUTCFullYear(), 0, 0)) / 86400000) - 1;
+  }
+  // Reduces an hourly dew point series (UTC) to count/sum/sumsq per (7-day bucket, UTC hour).
+  function buildClimatology(timesMs, dewC, years) {
+    const n = new Array(CLIMO_BUCKETS * 24).fill(0);
+    const s = new Array(CLIMO_BUCKETS * 24).fill(0);
+    const q = new Array(CLIMO_BUCKETS * 24).fill(0);
+    for (let i = 0; i < timesMs.length; i++) {
+      const v = dewC[i];
+      if (!isNum(v)) continue;
+      const d = new Date(timesMs[i]);
+      const k = Math.min(CLIMO_BUCKETS - 1, Math.floor(doyOf(timesMs[i]) / 7)) * 24 + d.getUTCHours();
+      n[k]++; s[k] += v; q[k] += v * v;
+    }
+    const r = (a) => a.map((x) => Math.round(x * 100) / 100);
+    return { years, n, s: r(s), q: r(q) };
+  }
+  // Mean and standard deviation for a time, pooling the neighboring buckets (about 3 weeks).
+  function climoStats(climo, ms) {
+    if (!climo) return null;
+    const b = Math.min(CLIMO_BUCKETS - 1, Math.floor(doyOf(ms) / 7));
+    const h = new Date(ms).getUTCHours();
+    let n = 0, s = 0, q = 0;
+    for (const db of [-1, 0, 1]) {
+      const k = ((b + db + CLIMO_BUCKETS) % CLIMO_BUCKETS) * 24 + h;
+      n += climo.n[k]; s += climo.s[k]; q += climo.q[k];
+    }
+    if (n < 30) return null;
+    const mean = s / n;
+    const sd = Math.sqrt(Math.max(q / n - mean * mean, 0.25));
+    return { mean, sd, n };
+  }
+  function dewPercentile(climo, ms, dewC) {
+    const st = climoStats(climo, ms);
+    if (!st || !isNum(dewC)) return null;
+    return 100 * normCdf((dewC - st.mean) / st.sd);
+  }
+
+  /* ---------- merge ---------- */
+
+  // Aligns on UTC hour; never fabricates a missing value (it stays null).
+  function mergeHourly(weather, air) {
+    const byT = new Map();
+    for (const a of air || []) byT.set(a.ms, a);
+    return weather.map((w) => {
+      const a = byT.get(w.ms);
+      return Object.assign({}, w, {
+        pm25: a && isNum(a.pm25) ? a.pm25 : null,
+        pm10: a && isNum(a.pm10) ? a.pm10 : null,
+        aod: a && isNum(a.aod) ? a.aod : null,
+        dust: a && isNum(a.dust) ? a.dust : null,
+        aqiUs: a && isNum(a.aqiUs) ? a.aqiUs : null,
+      });
+    });
+  }
+
+  /* ---------- derived features ---------- */
+
+  // ctx: { place:{lat,lon,tz}, hours:[HourlyRecord sorted by ms], nowMs, climo, second }
+  function derive(ctx) {
+    const H = ctx.hours;
+    const out = new Array(H.length);
+    const { lat, lon } = ctx.place;
+    for (let i = 0; i < H.length; i++) {
+      const r = H[i];
+      const sun = sunPosition(lat, lon, r.ms);
+      const prev24 = i >= 24 ? H[i - 24] : null;
+      const prev12 = i >= 12 ? H[i - 12] : null;
+      let precip24 = 0;
+      for (let j = Math.max(0, i - 24); j < i; j++) precip24 += H[j].precipMm || 0;
+      let hsr = null;
+      if ((r.precipMm || 0) >= 0.2) hsr = 0;
+      else {
+        for (let j = i - 1; j >= 0; j--) if ((H[j].precipMm || 0) >= 0.2) { hsr = i - j; break; }
+        if (hsr == null && i >= 36) hsr = 99; // checked at least 36 h back, none
+      }
+      out[i] = {
+        dpTrend24C: prev24 && isNum(prev24.dewC) && isNum(r.dewC) ? r.dewC - prev24.dewC : null,
+        pTrend12: prev12 && isNum(prev12.pressHpa) && isNum(r.pressHpa) ? r.pressHpa - prev12.pressHpa : null,
+        precip24, hoursSinceRain: hsr,
+        spreadC: isNum(r.tempC) && isNum(r.dewC) ? r.tempC - r.dewC : null,
+        sunElevDeg: sun.elevDeg, sunAzDeg: sun.azDeg,
+        dpPercentile: dewPercentile(ctx.climo, r.ms, r.dewC),
+        leadHours: ctx.nowMs != null ? Math.max(0, (r.ms - ctx.nowMs) / HOUR) : 0,
+      };
+    }
+    return out;
+  }
+
+  /* ---------- factors ---------- */
+
+  // Each factor takes x = { r (record), d (derived), p (profile), prior (wind prior table|null) }
+  // and returns { score 0..1, raw } or null when its input is missing (it then drops out).
+  function curveFor(p, key, dflt) {
+    const o = p.curves && p.curves[key];
+    if (key === 'skyCover') return o === 'soft' ? CURVES.softSky : o === 'wildlife' ? CURVES.wildSky : dflt;
+    if (key === 'humidity') return o === 'soft' ? CURVES.softHumidity : dflt;
+    return dflt;
+  }
+
+  const FACTORS = {
+    dewpoint(x) {
+      const { r, d } = x;
+      if (!isNum(r.dewC)) return null;
+      const abs = curve(CURVES.dewAbsF, cToF(r.dewC));
+      if (isNum(d.dpPercentile)) {
+        const pct = curve(CURVES.dewPct, d.dpPercentile);
+        return { score: 0.6 * abs + 0.4 * pct, raw: { dewC: r.dewC, pct: d.dpPercentile } };
+      }
+      return { score: abs, raw: { dewC: r.dewC, pct: null } };
+    },
+    particulates(x) {
+      const { r } = x;
+      const parts = [];
+      if (isNum(r.pm25)) parts.push(curve(CURVES.pm25, r.pm25));
+      if (isNum(r.aod)) parts.push(curve(CURVES.aod, r.aod));
+      if (!parts.length) return null;
+      return { score: Math.min(...parts), raw: { pm25: r.pm25, aod: r.aod } };
+    },
+    visibility(x) {
+      const { r } = x;
+      if (!isNum(r.visM)) return null;
+      return { score: curve(CURVES.visMi, mToMi(r.visM)), raw: { visM: r.visM } };
+    },
+    ventilation(x) {
+      const { r, d } = x;
+      if (!isNum(r.pblM) || d.sunElevDeg <= 10) return null;
+      return { score: curve(CURVES.pblM, r.pblM), raw: { pblM: r.pblM } };
+    },
+    airmass(x) {
+      const { d } = x;
+      if (!isNum(d.dpTrend24C)) return null;
+      let s = curve(CURVES.dpTrendF, d.dpTrend24C * 1.8);
+      if (isNum(d.pTrend12) && d.pTrend12 >= 3) s = Math.min(1, s + 0.1);
+      return { score: s, raw: { dpTrendC: d.dpTrend24C, pTrend12: d.pTrend12 } };
+    },
+    rainScrub(x) {
+      const { r, d, p } = x;
+      if (d.hoursSinceRain == null && !(r.precipMm >= 0.2)) {
+        // not enough history to know; only the "no rain in window" case is unknown
+        return null;
+      }
+      const hsr = d.hoursSinceRain;
+      const raw = { precip24: d.precip24, hoursSinceRain: hsr, nowMm: r.precipMm };
+      let s;
+      if (p.curves && p.curves.rainScrub === 'soft') {
+        if (hsr === 0) s = 0.3;
+        else if (d.precip24 >= 1 && hsr >= 1 && hsr <= 12) s = 1;
+        else if (d.precip24 >= 1 && hsr > 12 && hsr <= 36) s = 0.6;
+        else s = 0.3;
+        return { score: s, raw };
+      }
+      if (hsr === 0) s = 0.3;
+      else if (d.precip24 >= 0.2 && hsr < 3) s = 0.5;
+      else if (d.precip24 >= 0.2 && hsr <= 36) {
+        const full = 1 - (0.5 * (hsr - 3)) / 33; // 1.0 at 3 h falling to 0.5 at 36 h
+        const strength = clamp((d.precip24 - 0.2) / 1.8, 0, 1); // 2 mm or more = full effect
+        s = 0.5 + (full - 0.5) * strength;
+      } else s = 0.5;
+      return { score: s, raw };
+    },
+    windRegime(x) {
+      const { r, prior } = x;
+      if (!isNum(r.windMs)) return null;
+      const mult = curve(CURVES.windSpeedMph, msToMph(r.windMs));
+      let dir = 1;
+      let dirName = null;
+      if (isNum(r.windDirDeg)) {
+        dirName = compass(r.windDirDeg);
+        if (prior) dir = 0.4 + 0.6 * prior[dirName];
+      }
+      return { score: mult * dir, raw: { windMs: r.windMs, dirDeg: r.windDirDeg, dirName, prior: !!prior } };
+    },
+    humidity(x) {
+      const { r, p } = x;
+      if (!isNum(r.rh)) return null;
+      return { score: curve(curveFor(p, 'humidity', CURVES.humidity), r.rh), raw: { rh: r.rh } };
+    },
+    skyCover(x) {
+      const { r, p } = x;
+      if (!isNum(r.cloudTotal)) return null;
+      return { score: curve(curveFor(p, 'skyCover', CURVES.sky), r.cloudTotal), raw: { cloud: r.cloudTotal } };
+    },
+    skyColor(x) {
+      const { r } = x;
+      if (!isNum(r.cloudMid) && !isNum(r.cloudHigh)) return null;
+      const v = Math.max(r.cloudMid || 0, r.cloudHigh || 0);
+      return { score: curve(CURVES.skyColor, v), raw: { midHigh: v, mid: r.cloudMid, high: r.cloudHigh } };
+    },
+    lowCloudClear(x) {
+      const { r } = x;
+      if (!isNum(r.cloudLow)) return null;
+      return { score: curve(CURVES.lowCloud, r.cloudLow), raw: { low: r.cloudLow } };
+    },
+    fogPotential(x) {
+      const { r, d } = x;
+      if (!isNum(d.spreadC) || !isNum(r.rh) || !isNum(r.windMs) || !isNum(r.cloudTotal)) return null;
+      const s =
+        curve(CURVES.fogSpreadF, d.spreadC * 1.8) * curve(CURVES.fogRh, r.rh) *
+        curve(CURVES.fogWindMph, msToMph(r.windMs)) * curve(CURVES.fogCloud, r.cloudTotal);
+      return { score: s, raw: { spreadC: d.spreadC, rh: r.rh, windMs: r.windMs, cloud: r.cloudTotal } };
+    },
+    calm(x) {
+      const { r } = x;
+      if (!isNum(r.windMs)) return null;
+      const w = msToMph(r.windMs);
+      let s = curve(CURVES.calmMph, w);
+      const g = isNum(r.gustMs) ? msToMph(r.gustMs) : null;
+      if (g != null && g > 2 * w && g > 8) s *= 0.7;
+      return { score: s, raw: { windMs: r.windMs, gustMs: r.gustMs } };
+    },
+    precipGate(x) {
+      const { r } = x;
+      if (!isNum(r.precipMm)) return null;
+      return { score: curve(CURVES.precipMm, r.precipMm), raw: { mm: r.precipMm } };
+    },
+    lightWindow(x) {
+      const { d, p } = x;
+      const key = (p.curves && p.curves.lightWindow) || 'default';
+      return { score: bandLookup(LIGHT_BANDS[key], d.sunElevDeg), raw: { elev: d.sunElevDeg } };
+    },
+    heatShimmer(x) {
+      const { r, d } = x;
+      if (!isNum(r.tempC) || d.sunElevDeg <= 35) return null;
+      return { score: curve(CURVES.shimmerF, cToF(r.tempC)), raw: { tempC: r.tempC, elev: d.sunElevDeg } };
+    },
+  };
+
+  /* ---------- scoring ---------- */
+
+  function hourIsScored(profile, r, d, tz) {
+    const h = profile.hours || {};
+    if (h.localHours) {
+      const lh = localParts(r.ms, tz).hour;
+      return lh >= h.localHours[0] && lh <= h.localHours[1];
+    }
+    if (h.sunElevRange) return d.sunElevDeg > h.sunElevRange[0] && d.sunElevDeg <= h.sunElevRange[1];
+    return d.sunElevDeg > (h.minSunElevDeg != null ? h.minSunElevDeg : -4);
+  }
+
+  function flagsFor(r, d) {
+    const f = [];
+    if (isNum(d.spreadC) && d.spreadC * 1.8 <= 3 && isNum(r.rh) && r.rh >= 95) f.push('fog');
+    if ((isNum(r.pm25) && r.pm25 > 35) || (isNum(r.aod) && r.aod > 0.6)) f.push('smoke');
+    if (isNum(r.dust) && r.dust > 50) f.push('dust');
+    if ((r.precipMm || 0) >= 0.2) f.push('rain');
+    if (isNum(r.tempC) && cToF(r.tempC) > 70 && d.sunElevDeg > 35) f.push('shimmer');
+    if (isNum(r.visM) && mToMi(r.visM) < 3) f.push('lowvis');
+    return f;
+  }
+
+  function confidence(lead, r, second) {
+    let tier = lead <= 48 ? 2 : lead <= 96 ? 1 : 0;
+    let note = lead <= 48 ? 'near-term forecast' : lead <= 96 ? 'forecast 2 to 4 days out' : 'forecast more than 4 days out';
+    if (second && isNum(second.dewC) && isNum(r.dewC) && Math.abs(second.dewC - r.dewC) * 1.8 >= 5) {
+      tier -= 1; note += '; NWS dew point differs by 5°F or more';
+    } else if (second && isNum(second.cloudTotal) && isNum(r.cloudTotal) && Math.abs(second.cloudTotal - r.cloudTotal) >= 40) {
+      tier -= 1; note += '; NWS cloud cover differs by 40 points or more';
+    }
+    tier = Math.max(0, tier);
+    return { level: ['low', 'medium', 'high'][tier], note };
+  }
+
+  // Scores every hour of ctx for one profile.
+  function score(ctx, profileIn, opts) {
+    opts = opts || {};
+    const profile = profileIn.weightSumDeclared != null ? profileIn : loadProfile(profileIn);
+    const derived = opts.derived || derive(ctx);
+    const prior = WIND_PRIORS[opts.windPrior || 'neutral'] || null;
+    const secondByMs = new Map((ctx.second || []).map((s) => [s.ms, s]));
+    const floor = profile.gate && isNum(profile.gate.floor) ? profile.gate.floor : 0.15;
+    return ctx.hours.map((r, i) => {
+      const d = derived[i];
+      const base = { t: r.t, ms: r.ms, profile: profile.id, derivedIndex: i };
+      const flags = flagsFor(r, d);
+      const conf = confidence(d.leadHours, r, secondByMs.get(r.ms));
+      if (!hourIsScored(profile, r, d, ctx.place.tz)) {
+        return Object.assign(base, { scored: false, score: null, band: null, factors: [], flags, confidence: conf.level, confidenceNote: conf.note, reasons: [] });
+      }
+      const factors = [];
+      let sumW = 0, sumWS = 0;
+      for (const [id, w] of Object.entries(profile.weights)) {
+        const res = FACTORS[id]({ r, d, p: profile, prior });
+        if (!res) continue;
+        const s = clamp(res.score, 0, 1);
+        factors.push({ id, raw: res.raw, score: s, weight: w, contribution: 0 });
+        sumW += w; sumWS += w * s;
+      }
+      if (!factors.length) {
+        return Object.assign(base, { scored: false, score: null, band: null, factors: [], flags, confidence: conf.level, confidenceNote: conf.note, reasons: [] });
+      }
+      for (const f of factors) f.contribution = (f.weight * (f.score - 0.5)) / sumW;
+      const sPrecip = isNum(r.precipMm) ? curve(CURVES.precipMm, r.precipMm) : 1;
+      const gate = floor + (1 - floor) * sPrecip;
+      let val = 100 * (sumWS / sumW) * gate;
+      if (profile.gate && isNum(profile.gate.fog) && flags.includes('fog')) val *= profile.gate.fog;
+      let capped = false;
+      for (const c of profile.caps || []) {
+        const hit = factors.some((f) => c.factors.includes(f.id) && f.score < c.below);
+        if (hit && val > c.max) { val = c.max; capped = true; }
+      }
+      val = clamp(val, 0, 100);
+      const reasons = pickReasons(factors);
+      return Object.assign(base, {
+        scored: true, score: val, band: bandOf(val), factors, flags, capped, gate,
+        missing: Object.keys(profile.weights).filter((id) => !factors.some((f) => f.id === id)),
+        confidence: conf.level, confidenceNote: conf.note, reasons,
+      });
+    });
+  }
+
+  function pickReasons(factors) {
+    const pos = factors.filter((f) => f.contribution > 0.004).sort((a, b) => b.contribution - a.contribution).slice(0, 2);
+    const neg = factors.filter((f) => f.contribution < -0.004).sort((a, b) => a.contribution - b.contribution).slice(0, 2);
+    return pos.map((f) => ({ factor: f.id, sign: 1, contribution: f.contribution, raw: f.raw }))
+      .concat(neg.map((f) => ({ factor: f.id, sign: -1, contribution: f.contribution, raw: f.raw })));
+  }
+
+  // Average a set of hour scores into one record (used for a window): mean score, mean factor scores.
+  function aggregate(hours) {
+    const hs = hours.filter((h) => h && h.scored);
+    if (!hs.length) return null;
+    const map = new Map();
+    for (const h of hs) for (const f of h.factors) {
+      const e = map.get(f.id) || { id: f.id, weight: f.weight, scoreSum: 0, contribSum: 0, n: 0, raws: [] };
+      e.scoreSum += f.score; e.contribSum += f.contribution; e.n++; e.raws.push(f.raw);
+      map.set(f.id, e);
+    }
+    const factors = [...map.values()].map((e) => ({
+      id: e.id, weight: e.weight, score: e.scoreSum / e.n, contribution: e.contribSum / e.n, raw: e.raws[Math.floor(e.raws.length / 2)],
+    }));
+    const flags = [...new Set(hs.flatMap((h) => h.flags))];
+    const rank = { low: 0, medium: 1, high: 2 };
+    const conf = hs.reduce((m, h) => (rank[h.confidence] < rank[m] ? h.confidence : m), 'high');
+    return {
+      score: hs.reduce((a, h) => a + h.score, 0) / hs.length, factors, flags, confidence: conf,
+      reasons: pickReasons(factors), hours: hs.length, capped: hs.some((h) => h.capped),
+    };
+  }
+
+  /* ---------- windows and days ---------- */
+
+  // Best runs of consecutive scored hours per local day. 3-hour runs, falling back to shorter ones.
+  function bestWindows(scores, opts) {
+    const o = Object.assign({ hours: 3, perDay: 3, tz: 'UTC', fromMs: -Infinity }, opts || {});
+    const byDay = new Map();
+    for (const s of scores) {
+      if (s.ms < o.fromMs) continue;
+      const k = localParts(s.ms, o.tz).date;
+      if (!byDay.has(k)) byDay.set(k, []);
+      byDay.get(k).push(s);
+    }
+    const result = [];
+    for (const [day, list] of byDay) {
+      list.sort((a, b) => a.ms - b.ms);
+      const chosen = [];
+      const used = new Set();
+      for (let rank = 0; rank < o.perDay; rank++) {
+        let best = null;
+        for (let len = o.hours; len >= 1 && !best; len--) {
+          for (let i = 0; i + len <= list.length; i++) {
+            const run = list.slice(i, i + len);
+            if (!run.every((s) => s.scored && !used.has(s.ms))) continue;
+            if (!run.every((s, j) => j === 0 || s.ms - run[j - 1].ms === HOUR)) continue;
+            const avg = run.reduce((a, s) => a + s.score, 0) / len;
+            if (!best || avg > best.score) best = { score: avg, run };
+          }
+        }
+        if (!best) break;
+        for (const s of best.run) used.add(s.ms);
+        chosen.push({
+          day, rank: rank + 1, score: best.score, band: bandOf(best.score), startMs: best.run[0].ms,
+          endMs: best.run[best.run.length - 1].ms + HOUR, hours: best.run.length, profile: best.run[0].profile,
+          confidence: best.run.reduce((m, s) => ({ low: 0, medium: 1, high: 2 }[s.confidence] < { low: 0, medium: 1, high: 2 }[m] ? s.confidence : m), 'high'),
+        });
+      }
+      result.push(...chosen);
+    }
+    return result;
+  }
+
+  /* ---------- stats (shot-log diagnostics) ---------- */
+
+  function pearson(a, b) {
+    const n = Math.min(a.length, b.length);
+    if (n < 3) return null;
+    const ma = a.reduce((x, y) => x + y, 0) / n, mb = b.reduce((x, y) => x + y, 0) / n;
+    let sab = 0, saa = 0, sbb = 0;
+    for (let i = 0; i < n; i++) { sab += (a[i] - ma) * (b[i] - mb); saa += (a[i] - ma) ** 2; sbb += (b[i] - mb) ** 2; }
+    return saa === 0 || sbb === 0 ? null : sab / Math.sqrt(saa * sbb);
+  }
+  function ranks(a) {
+    const idx = a.map((v, i) => [v, i]).sort((x, y) => x[0] - y[0]);
+    const r = new Array(a.length);
+    for (let i = 0; i < idx.length;) {
+      let j = i;
+      while (j + 1 < idx.length && idx[j + 1][0] === idx[i][0]) j++;
+      const avg = (i + j) / 2 + 1;
+      for (let k = i; k <= j; k++) r[idx[k][1]] = avg;
+      i = j + 1;
+    }
+    return r;
+  }
+  const spearman = (a, b) => pearson(ranks(a), ranks(b));
+
+  return {
+    pearson, ranks, spearman,
+    HOUR, CURVES, PROFILES, PROFILE_BY_ID, FACTOR_IDS, FACTOR_LABELS, BANDS, WIND_PRIORS, FACTORS,
+    clamp, isNum, cToF, msToMph, mToMi, compass, windPriorFor,
+    curve, bandLookup, loadProfile, bandOf, bandName,
+    localParts, tzOffsetMs, zonedMidnight, nextDayKey,
+    sunPosition, sunTimes, normCdf, buildClimatology, climoStats, dewPercentile,
+    mergeHourly, derive, score, aggregate, bestWindows, confidence, flagsFor,
+  };
+});
+
+/* ClearSky providers: network adapters that emit normalized SI/UTC records.
+ * Imports nothing from core. Works in browsers and in Node 18+ (global fetch).
+ * Every function throws ProviderError{kind: timeout|rate-limit|http|shape|network} and is cache-aware.
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.ClearSkyProviders = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  const isNum = (x) => typeof x === 'number' && Number.isFinite(x);
+
+  class ProviderError extends Error {
+    constructor(kind, message, status) {
+      super(message);
+      this.name = 'ProviderError';
+      this.kind = kind;
+      this.status = status || null;
+    }
+  }
+
+  /* ---------- cache (localStorage when present, memory otherwise) ---------- */
+
+  const mem = new Map();
+  const hasLS = () => typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+  const cache = {
+    get(key, ttlMs) {
+      let raw = null;
+      try { raw = hasLS() ? localStorage.getItem('cs:' + key) : mem.get(key) || null; } catch (e) { raw = mem.get(key) || null; }
+      if (!raw) return null;
+      try {
+        const o = JSON.parse(raw);
+        if (ttlMs != null && Date.now() - o.at > ttlMs) return null;
+        return o;
+      } catch (e) { return null; }
+    },
+    set(key, value) {
+      const raw = JSON.stringify({ at: Date.now(), v: value });
+      try { if (hasLS()) localStorage.setItem('cs:' + key, raw); else mem.set(key, raw); } catch (e) { mem.set(key, raw); }
+    },
+  };
+
+  /* ---------- http ---------- */
+
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // 8 s timeout per request; 429 and 5xx retry after 1, 2, 4 s, then throw so callers fall back to cache.
+  async function http(url, opts) {
+    const o = Object.assign({ timeoutMs: 8000, retries: 3, as: 'json', headers: undefined }, opts || {});
+    let lastErr;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new ProviderError('network', 'You are offline');
+    for (let attempt = 0; attempt <= o.retries; attempt++) {
+      const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timer = ctl ? setTimeout(() => ctl.abort(), o.timeoutMs) : null;
+      try {
+        const res = await fetch(url, { signal: ctl ? ctl.signal : undefined, headers: o.headers });
+        if (timer) clearTimeout(timer);
+        if (res.status === 429 || res.status >= 500) {
+          lastErr = new ProviderError(res.status === 429 ? 'rate-limit' : 'http', 'HTTP ' + res.status + ' from ' + hostOf(url), res.status);
+          if (attempt < o.retries) { await sleep(1000 * 2 ** attempt); continue; }
+          throw lastErr;
+        }
+        if (!res.ok) throw new ProviderError('http', 'HTTP ' + res.status + ' from ' + hostOf(url), res.status);
+        try { return o.as === 'text' ? await res.text() : await res.json(); }
+        catch (e) { throw new ProviderError('shape', 'Unreadable response from ' + hostOf(url)); }
+      } catch (e) {
+        if (timer) clearTimeout(timer);
+        if (e instanceof ProviderError) throw e;
+        const timedOut = e && e.name === 'AbortError';
+        lastErr = new ProviderError(timedOut ? 'timeout' : 'network', timedOut ? 'Timed out calling ' + hostOf(url) : 'Network error calling ' + hostOf(url));
+        // A dropped connection retries once after 1 s; offline users should reach their cached copy quickly.
+        if (attempt < Math.min(o.retries, 1) && !timedOut) { await sleep(1000); continue; }
+        throw lastErr;
+      }
+    }
+    throw lastErr;
+  }
+  function hostOf(u) { try { return new URL(u).host; } catch (e) { return u; } }
+
+  /* ---------- geocoding ---------- */
+
+  const zipOk = (z) => /^\d{5}$/.test(String(z).trim());
+
+  function parseLatLon(s) {
+    const m = String(s).trim().match(/^(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)$/);
+    if (!m) return null;
+    const lat = +m[1], lon = +m[2];
+    if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+    return { lat, lon };
+  }
+
+  // Zippopotam.us first (CORS, keyless), Nominatim when it has no record for the zip.
+  async function geocodeZip(zip) {
+    zip = String(zip).trim();
+    if (!zipOk(zip)) throw new ProviderError('shape', 'Enter a 5-digit US zip code, or "lat, lon".');
+    const hit = cache.get('zip:' + zip, null);
+    if (hit) return hit.v;
+    let place = null;
+    try {
+      const j = await http('https://api.zippopotam.us/us/' + zip, { retries: 1 });
+      const p = j && j.places && j.places[0];
+      if (!p) throw new ProviderError('shape', 'Zippopotam returned no places');
+      place = { zip, lat: +p.latitude, lon: +p.longitude, name: p['place name'], state: p['state abbreviation'] };
+    } catch (e) {
+      if (e.kind === 'http' && e.status === 404) { /* fall through to Nominatim */ }
+      else if (e.kind === 'timeout' || e.kind === 'network' || e.kind === 'rate-limit' || e.kind === 'http' || e.kind === 'shape') { /* fall through */ }
+      else throw e;
+    }
+    if (!place) {
+      const j = await http('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&addressdetails=1&postalcode=' + zip, { retries: 1 });
+      if (!Array.isArray(j) || !j.length) throw new ProviderError('shape', 'No place found for zip ' + zip + '. Try "lat, lon".');
+      const a = j[0].address || {};
+      place = {
+        zip, lat: +j[0].lat, lon: +j[0].lon,
+        name: a.city || a.town || a.village || a.county || String(j[0].display_name || zip).split(',')[1] || zip,
+        state: a['ISO3166-2-lvl4'] ? a['ISO3166-2-lvl4'].replace('US-', '') : a.state || '',
+      };
+    }
+    cache.set('zip:' + zip, place);
+    return place;
+  }
+
+  async function reverseName(lat, lon) {
+    try {
+      const j = await http('https://nominatim.openstreetmap.org/reverse?format=json&zoom=10&addressdetails=1&lat=' + lat + '&lon=' + lon, { retries: 0, timeoutMs: 5000 });
+      const a = (j && j.address) || {};
+      return { name: a.city || a.town || a.village || a.county || null, state: a['ISO3166-2-lvl4'] ? a['ISO3166-2-lvl4'].replace('US-', '') : a.state || '' };
+    } catch (e) { return { name: null, state: '' }; }
+  }
+
+  // Time zone id (and elevation) for a coordinate, via a tiny Open-Meteo call.
+  async function resolveTimezone(lat, lon) {
+    const key = 'tz:' + lat.toFixed(2) + ',' + lon.toFixed(2);
+    const hit = cache.get(key, null);
+    if (hit) return hit.v;
+    const j = await http('https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon + '&daily=sunrise&forecast_days=1&timezone=auto', { retries: 1 });
+    if (!j || !j.timezone) throw new ProviderError('shape', 'No time zone in response');
+    const v = { tz: j.timezone, elevM: isNum(j.elevation) ? j.elevation : 0 };
+    cache.set(key, v);
+    return v;
+  }
+
+  // Zip or "lat, lon" -> Place with tz.
+  async function resolvePlace(input) {
+    const s = String(input).trim();
+    const ll = parseLatLon(s);
+    let place;
+    if (ll) {
+      const rn = await reverseName(ll.lat, ll.lon);
+      place = { zip: null, lat: ll.lat, lon: ll.lon, name: rn.name || ll.lat.toFixed(3) + ', ' + ll.lon.toFixed(3), state: rn.state };
+    } else place = await geocodeZip(s);
+    const t = await resolveTimezone(place.lat, place.lon);
+    return Object.assign({}, place, { tz: t.tz, elevM: t.elevM });
+  }
+
+  /* ---------- Open-Meteo forecast and air quality ---------- */
+
+  const FORECAST_VARS = [
+    'temperature_2m', 'relative_humidity_2m', 'dew_point_2m', 'precipitation', 'surface_pressure', 'cloud_cover',
+    'cloud_cover_low', 'cloud_cover_mid', 'cloud_cover_high', 'visibility', 'wind_speed_10m', 'wind_direction_10m',
+    'wind_gusts_10m', 'boundary_layer_height', 'is_day',
+  ];
+  const AIR_VARS = ['pm2_5', 'pm10', 'aerosol_optical_depth', 'dust', 'us_aqi'];
+
+  const msOf = (t) => Date.parse(t.length === 16 ? t + ':00Z' : t.endsWith('Z') ? t : t + 'Z');
+  const num = (a, i) => (a && isNum(a[i]) ? a[i] : null);
+
+  function normalizeForecast(j) {
+    const h = j && j.hourly;
+    if (!h || !Array.isArray(h.time) || !h.time.length) throw new ProviderError('shape', 'Forecast response has no hourly data');
+    return h.time.map((t, i) => {
+      const ms = msOf(t);
+      return {
+        t: new Date(ms).toISOString(), ms,
+        tempC: num(h.temperature_2m, i), dewC: num(h.dew_point_2m, i), rh: num(h.relative_humidity_2m, i),
+        windMs: num(h.wind_speed_10m, i), gustMs: num(h.wind_gusts_10m, i), windDirDeg: num(h.wind_direction_10m, i),
+        cloudTotal: num(h.cloud_cover, i), cloudLow: num(h.cloud_cover_low, i), cloudMid: num(h.cloud_cover_mid, i), cloudHigh: num(h.cloud_cover_high, i),
+        visM: num(h.visibility, i), precipMm: num(h.precipitation, i) == null ? 0 : h.precipitation[i], pressHpa: num(h.surface_pressure, i),
+        pblM: num(h.boundary_layer_height, i), isDay: h.is_day ? h.is_day[i] === 1 : null,
+        pm25: null, pm10: null, aod: null, dust: null, aqiUs: null,
+        src: { weather: 'open-meteo', air: null },
+      };
+    });
+  }
+
+  function normalizeAir(j) {
+    const h = j && j.hourly;
+    if (!h || !Array.isArray(h.time)) throw new ProviderError('shape', 'Air-quality response has no hourly data');
+    return h.time.map((t, i) => ({
+      ms: msOf(t), pm25: num(h.pm2_5, i), pm10: num(h.pm10, i), aod: num(h.aerosol_optical_depth, i), dust: num(h.dust, i), aqiUs: num(h.us_aqi, i),
+    }));
+  }
+
+  async function cachedJson(key, ttlMs, url, opts) {
+    const hit = cache.get(key, ttlMs);
+    if (hit) return { json: hit.v, at: hit.at, fromCache: true };
+    try {
+      const json = await http(url, opts);
+      cache.set(key, json);
+      return { json, at: Date.now(), fromCache: false };
+    } catch (e) {
+      const stale = cache.get(key, null);
+      if (stale) return { json: stale.v, at: stale.at, fromCache: true, stale: true, error: e };
+      throw e;
+    }
+  }
+
+  const ckey = (p) => p.lat.toFixed(3) + ',' + p.lon.toFixed(3);
+
+  async function fetchForecast(place, range) {
+    const r = Object.assign({ pastDays: 2, forecastDays: 7 }, range || {});
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + place.lat + '&longitude=' + place.lon +
+      '&hourly=' + FORECAST_VARS.join(',') + '&past_days=' + r.pastDays + '&forecast_days=' + r.forecastDays + '&timezone=GMT&wind_speed_unit=ms';
+    const res = await cachedJson('fc:' + ckey(place), 60 * 60000, url);
+    return { records: normalizeForecast(res.json), at: res.at, fromCache: res.fromCache, stale: !!res.stale, error: res.error || null, elevM: isNum(res.json.elevation) ? res.json.elevation : null };
+  }
+
+  async function fetchAirQuality(place, range) {
+    const r = Object.assign({ pastDays: 2, forecastDays: 7 }, range || {});
+    const url = 'https://air-quality-api.open-meteo.com/v1/air-quality?latitude=' + place.lat + '&longitude=' + place.lon +
+      '&hourly=' + AIR_VARS.join(',') + '&past_days=' + r.pastDays + '&forecast_days=' + r.forecastDays + '&timezone=GMT';
+    const res = await cachedJson('aq:' + ckey(place), 60 * 60000, url);
+    return { records: normalizeAir(res.json), at: res.at, fromCache: res.fromCache, stale: !!res.stale, error: res.error || null };
+  }
+
+  /* ---------- ERA5 climate series (reduced to a table by core.buildClimatology) ---------- */
+
+  async function fetchClimateSeries(place, years) {
+    const url = 'https://archive-api.open-meteo.com/v1/archive?latitude=' + place.lat.toFixed(2) + '&longitude=' + place.lon.toFixed(2) +
+      '&start_date=' + years[0] + '-01-01&end_date=' + years[1] + '-12-31&hourly=dew_point_2m&timezone=GMT';
+    const j = await http(url, { timeoutMs: 25000, retries: 1 });
+    const h = j && j.hourly;
+    if (!h || !Array.isArray(h.time) || !Array.isArray(h.dew_point_2m)) throw new ProviderError('shape', 'Archive response has no dew point series');
+    return { timesMs: h.time.map(msOf), dewC: h.dew_point_2m };
+  }
+
+  /* ---------- NWS second opinion ---------- */
+
+  // ISO 8601 duration to milliseconds (only the PnDTnHnM subset the NWS grid uses).
+  function durationMs(d) {
+    const m = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?)?$/.exec(d);
+    if (!m) return 3600000;
+    return ((+m[1] || 0) * 86400 + (+m[2] || 0) * 3600 + (+m[3] || 0) * 60) * 1000;
+  }
+  function expandLayer(layer) {
+    const out = new Map();
+    if (!layer || !Array.isArray(layer.values)) return out;
+    for (const v of layer.values) {
+      if (!isNum(v.value)) continue;
+      const [start, dur] = String(v.validTime).split('/');
+      const s = Date.parse(start);
+      const n = Math.min(Math.max(1, Math.round(durationMs(dur) / 3600000)), 24 * 7);
+      for (let i = 0; i < n; i++) out.set(s + i * 3600000, v.value);
+    }
+    return out;
+  }
+
+  function normalizeNwsGrid(j) {
+    const p = j && j.properties;
+    if (!p) throw new ProviderError('shape', 'NWS grid response has no properties');
+    const dew = expandLayer(p.dewpoint), sky = expandLayer(p.skyCover), vis = expandLayer(p.visibility);
+    const keys = [...new Set([...dew.keys(), ...sky.keys()])].sort((a, b) => a - b);
+    return keys.map((ms) => ({
+      ms, t: new Date(ms).toISOString(), dewC: dew.has(ms) ? dew.get(ms) : null, cloudTotal: sky.has(ms) ? sky.get(ms) : null,
+      visM: vis.has(ms) ? vis.get(ms) : null,
+    }));
+  }
+
+  // US only. Browsers refuse to set a custom User-Agent, and setting one would force a CORS preflight,
+  // so the browser's own UA identifies the request. Node callers may pass opts.headers.
+  async function fetchSecondOpinion(place, opts) {
+    const headers = (opts && opts.headers) || undefined;
+    const kp = 'nws:grid:' + ckey(place);
+    let gridUrl = (cache.get(kp, 24 * 3600000) || {}).v;
+    if (!gridUrl) {
+      const pts = await http('https://api.weather.gov/points/' + place.lat.toFixed(4) + ',' + place.lon.toFixed(4), { retries: 1, headers });
+      gridUrl = pts && pts.properties && pts.properties.forecastGridData;
+      if (!gridUrl) throw new ProviderError('shape', 'NWS /points gave no forecastGridData');
+      cache.set(kp, gridUrl);
+    }
+    const res = await cachedJson('nws:' + ckey(place), 60 * 60000, gridUrl, { retries: 1, timeoutMs: 10000, headers });
+    return { records: normalizeNwsGrid(res.json), at: res.at, fromCache: res.fromCache };
+  }
+
+  /* ---------- historical forecast, for the shot log ---------- */
+
+  async function fetchPast(place, dayKey) {
+    const w = 'https://historical-forecast-api.open-meteo.com/v1/forecast?latitude=' + place.lat + '&longitude=' + place.lon +
+      '&hourly=' + FORECAST_VARS.join(',') + '&start_date=' + dayKey + '&end_date=' + dayKey + '&timezone=GMT&wind_speed_unit=ms';
+    const a = 'https://air-quality-api.open-meteo.com/v1/air-quality?latitude=' + place.lat + '&longitude=' + place.lon +
+      '&hourly=' + AIR_VARS.join(',') + '&start_date=' + dayKey + '&end_date=' + dayKey + '&timezone=GMT';
+    const [wj, aj] = await Promise.all([
+      cachedJson('past:' + ckey(place) + ':' + dayKey, 365 * 86400000, w),
+      cachedJson('pastaq:' + ckey(place) + ':' + dayKey, 365 * 86400000, a).catch(() => null),
+    ]);
+    return { weather: normalizeForecast(wj.json), air: aj ? normalizeAir(aj.json) : [] };
+  }
+
+  return {
+    ProviderError, cache, http, zipOk, parseLatLon, geocodeZip, reverseName, resolveTimezone, resolvePlace,
+    normalizeForecast, normalizeAir, normalizeNwsGrid, durationMs, expandLayer,
+    fetchForecast, fetchAirQuality, fetchClimateSeries, fetchSecondOpinion, fetchPast, FORECAST_VARS, AIR_VARS,
+  };
+});
+
+/* ClearSky format: unit conversion for display, time labels, and plain-language reasons.
+ * Pure. Reasons are rebuilt from the same raw SI values for either unit system, so toggling units
+ * changes the text and never the scores.
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.ClearSkyFormat = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  const isNum = (x) => typeof x === 'number' && Number.isFinite(x);
+  const round = Math.round;
+
+  function makeFmt(units) {
+    const us = units !== 'si';
+    return {
+      units: us ? 'us' : 'si',
+      temp: (c) => (isNum(c) ? (us ? round((c * 9) / 5 + 32) + '°F' : round(c) + '°C') : '–'),
+      dTemp: (c) => (isNum(c) ? (us ? round(Math.abs(c) * 1.8) + '°F' : round(Math.abs(c)) + '°C') : '–'),
+      speed: (ms) => (isNum(ms) ? (us ? round(ms * 2.2369363) + ' mph' : round(ms * 3.6) + ' km/h') : '–'),
+      dist: (m) => {
+        if (!isNum(m)) return '–';
+        const v = us ? m / 1609.344 : m / 1000;
+        return (v >= 10 ? round(v) : v.toFixed(1)) + (us ? ' mi' : ' km');
+      },
+      height: (m) => (isNum(m) ? (us ? round((m * 3.28084) / 10) * 10 + ' ft' : round(m / 10) * 10 + ' m') : '–'),
+      precip: (mm) => (isNum(mm) ? (us ? (mm / 25.4).toFixed(2) + ' in' : mm.toFixed(1) + ' mm') : '–'),
+      pres: (h) => (isNum(h) ? (us ? (h * 0.029530).toFixed(2) + ' inHg' : round(h) + ' hPa') : '–'),
+      pct: (v) => (isNum(v) ? round(v) + '%' : '–'),
+      num: (v, d) => (isNum(v) ? v.toFixed(d == null ? 0 : d) : '–'),
+    };
+  }
+
+  const ordinal = (n) => {
+    n = round(n);
+    const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  };
+
+  /* ---------- reasons ---------- */
+
+  // value = what was measured; note = the plain-language reading of it. sign: 1 helps, -1 hurts, 0 neutral.
+  function describeParts(id, sign, raw, f) {
+    const pos = sign > 0;
+    switch (id) {
+      case 'dewpoint': {
+        const note = (pos ? 'dry' : 'humid') + ' air' + (isNum(raw.pct) ? ', ' + ordinal(raw.pct) + ' percentile' : '');
+        return { value: 'Dew point ' + f.temp(raw.dewC), note };
+      }
+      case 'particulates': {
+        const bits = [];
+        if (isNum(raw.pm25)) bits.push('PM2.5 ' + round(raw.pm25) + ' µg/m³');
+        if (isNum(raw.aod)) bits.push('aerosol depth ' + raw.aod.toFixed(2));
+        return { value: bits.join(', '), note: pos ? 'clean air' : 'smoke, dust or pollution' };
+      }
+      case 'visibility':
+        return { value: 'Visibility ' + f.dist(raw.visM), note: pos ? 'long sight lines' : 'reduced sight lines' };
+      case 'ventilation':
+        return { value: 'Mixing height ' + f.height(raw.pblM), note: pos ? 'haze disperses' : 'haze can pool near the ground' };
+      case 'airmass': {
+        const up = raw.dpTrendC > 0.3, down = raw.dpTrendC < -0.3;
+        const value = down ? 'Dew point down ' + f.dTemp(raw.dpTrendC) + ' in 24 h' : up ? 'Dew point up ' + f.dTemp(raw.dpTrendC) + ' in 24 h' : 'Dew point steady over 24 h';
+        const p = isNum(raw.pTrend12) && raw.pTrend12 >= 3 ? ', pressure rising' : '';
+        return { value: value + p, note: down ? 'drier air arriving' : up ? 'moisture building' : 'no air-mass change' };
+      }
+      case 'rainScrub': {
+        if (isNum(raw.nowMm) && raw.nowMm >= 0.2) return { value: 'Raining now', note: 'rain in the air' };
+        if (raw.precip24 >= 0.2) {
+          return pos
+            ? { value: 'Rain ' + raw.hoursSinceRain + ' h ago, ' + f.precip(raw.precip24) + ' in 24 h', note: 'air washed clean' }
+            : { value: 'Rain ended ' + raw.hoursSinceRain + ' h ago', note: 'air still damp' };
+        }
+        return { value: 'No rain in the last 24 h', note: 'nothing has cleared the air' };
+      }
+      case 'windRegime': {
+        const mph = raw.windMs * 2.2369363;
+        const dir = raw.dirName ? ' from ' + raw.dirName : '';
+        const note = pos ? 'favorable flow' : mph < 3 ? 'calm air lets haze pool' : mph > 15 ? 'strong wind shakes long lenses' : 'unfavorable direction';
+        return { value: 'Wind ' + f.speed(raw.windMs) + dir, note };
+      }
+      case 'humidity':
+        return { value: 'Humidity ' + f.pct(raw.rh), note: pos ? 'dry' : 'moist' };
+      case 'skyCover': {
+        const c = raw.cloud;
+        return { value: 'Cloud cover ' + f.pct(c), note: c >= 85 ? 'overcast' : c <= 30 ? 'open sky' : 'broken cloud' };
+      }
+      case 'skyColor':
+        return { value: 'Mid and high cloud ' + f.pct(raw.midHigh), note: pos ? 'cloud to catch the color' : raw.midHigh < 20 ? 'little cloud to light up' : 'thick cloud blocks the color' };
+      case 'lowCloudClear':
+        return { value: 'Low cloud ' + f.pct(raw.low), note: pos ? 'clear horizon' : 'blocks the horizon' };
+      case 'fogPotential':
+        return pos
+          ? { value: 'Dew point within ' + f.dTemp(raw.spreadC) + ' of temperature, humidity ' + f.pct(raw.rh), note: 'fog likely with light wind' }
+          : { value: 'Spread ' + f.dTemp(raw.spreadC) + ', humidity ' + f.pct(raw.rh) + ', wind ' + f.speed(raw.windMs), note: 'fog unlikely' };
+      case 'calm': {
+        const g = isNum(raw.gustMs) && raw.gustMs > 2 * raw.windMs && raw.gustMs * 2.2369 > 8 ? ', gusts ' + f.speed(raw.gustMs) : '';
+        return { value: 'Wind ' + f.speed(raw.windMs) + g, note: pos ? 'still air' : 'ripples water and shakes gear' };
+      }
+      case 'precipGate':
+        return raw.mm > 0.05 ? { value: 'Precipitation ' + f.precip(raw.mm) + ' per hour', note: 'wet lens and soft detail' } : { value: 'No precipitation', note: 'dry' };
+      case 'lightWindow': {
+        const e = raw.elev;
+        const value = e >= 0 ? 'Sun ' + round(e) + '° above the horizon' : 'Sun ' + round(-e) + '° below the horizon';
+        return { value, note: pos ? 'good light angle' : e > 30 ? 'harsh overhead light' : e < 0 ? 'before sunrise or after sunset' : 'not the best angle' };
+      }
+      case 'heatShimmer':
+        return { value: 'Temperature ' + f.temp(raw.tempC) + ' with high sun', note: pos ? 'little shimmer' : 'heat shimmer softens long lenses' };
+      default:
+        return { value: id, note: '' };
+    }
+  }
+  function describe(id, sign, raw, f) {
+    const p = describeParts(id, sign, raw, f);
+    return p.note ? p.value + ' (' + p.note + ')' : p.value;
+  }
+
+  // One short line for tight spaces: signed, no explanatory note.
+  function shortReason(id, sign, raw, f) {
+    let v = describeParts(id, sign, raw, f).value;
+    if (id === 'particulates') v = v.split(',')[0];
+    return (sign > 0 ? '+ ' : sign < 0 ? '− ' : '') + v;
+  }
+
+  const MISSING_TEXT = {
+    particulates: 'smoke and particulate data', visibility: 'visibility', ventilation: 'mixing height (night or low sun)',
+    airmass: 'the 24-hour air-mass trend', rainScrub: 'recent rain history', windRegime: 'wind', humidity: 'humidity',
+    skyCover: 'cloud cover', skyColor: 'mid and high cloud', lowCloudClear: 'low cloud', fogPotential: 'fog inputs',
+    calm: 'wind', precipGate: 'precipitation', lightWindow: 'sun position', heatShimmer: 'heat shimmer (sun too low)', dewpoint: 'dew point',
+  };
+
+  /* ---------- time labels ---------- */
+
+  function parts(ms, tz) {
+    const d = new Date(ms);
+    const o = {};
+    for (const p of new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', hour: 'numeric', minute: '2-digit', weekday: 'short', month: 'short', day: 'numeric' }).formatToParts(d)) o[p.type] = p.value;
+    return { hour: +o.hour % 24, minute: +o.minute, weekday: o.weekday, month: o.month, day: o.day };
+  }
+  const h12 = (h) => ((h + 11) % 12) + 1;
+  const ampm = (h) => (h % 24 < 12 ? 'am' : 'pm');
+
+  function hourLabel(ms, tz) {
+    const p = parts(ms, tz);
+    return h12(p.hour) + ' ' + ampm(p.hour);
+  }
+  function clockLabel(ms, tz) {
+    if (ms == null) return '–';
+    const p = parts(ms, tz);
+    return h12(p.hour) + ':' + String(p.minute).padStart(2, '0') + ' ' + ampm(p.hour);
+  }
+  // "7–10 am", "11 am–2 pm"; end is the exclusive end of the last hour.
+  function rangeLabel(startMs, endMs, tz) {
+    const a = parts(startMs, tz), b = parts(endMs, tz);
+    if (endMs - startMs <= 3600000) return h12(a.hour) + ' ' + ampm(a.hour);
+    return ampm(a.hour) === ampm(b.hour) ? h12(a.hour) + '–' + h12(b.hour) + ' ' + ampm(b.hour) : h12(a.hour) + ' ' + ampm(a.hour) + '–' + h12(b.hour) + ' ' + ampm(b.hour);
+  }
+  const weekday = (ms, tz) => parts(ms, tz).weekday;
+  const dateLabel = (ms, tz) => { const p = parts(ms, tz); return p.month + ' ' + p.day; };
+  function ageLabel(ms, nowMs) {
+    const m = Math.max(0, Math.round((nowMs - ms) / 60000));
+    if (m < 1) return 'just now';
+    if (m < 60) return m + ' min ago';
+    const h = Math.round(m / 60);
+    return h < 48 ? h + ' h ago' : Math.round(h / 24) + ' days ago';
+  }
+
+  return { makeFmt, ordinal, describe, describeParts, shortReason, MISSING_TEXT, hourLabel, clockLabel, rangeLabel, weekday, dateLabel, ageLabel, parts };
+});
+
+/* ClearSky app: UI layer. Builds DOM with textContent only (no innerHTML on data). */
+(function () {
+  'use strict';
+  const C = window.ClearSkyCore, P = window.ClearSkyProviders, F = window.ClearSkyFormat;
+  const HOUR = C.HOUR;
+  const isNum = C.isNum;
+
+  /* ---------- tiny helpers ---------- */
+
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  function build(ns, tag, attrs, kids) {
+    const el = ns ? document.createElementNS(ns, tag) : document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (v == null || v === false) continue;
+      if (k === 'class') el.setAttribute('class', v);
+      else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+      else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2), v);
+      else if (k === 'text') el.textContent = v;
+      else el.setAttribute(k, v === true ? '' : String(v));
+    }
+    for (const kid of [].concat(kids || [])) {
+      if (kid == null || kid === false) continue;
+      el.appendChild(typeof kid === 'string' || typeof kid === 'number' ? document.createTextNode(String(kid)) : kid);
+    }
+    return el;
+  }
+  const h = (tag, attrs, ...kids) => build(null, tag, attrs, kids.flat());
+  const s = (tag, attrs, ...kids) => build(SVGNS, tag, attrs, kids.flat());
+  const $ = (sel, root) => (root || document).querySelector(sel);
+  const clear = (el) => { while (el.firstChild) el.removeChild(el.firstChild); return el; };
+
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('csk:' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem('csk:' + k, JSON.stringify(v)); } catch (e) { /* private mode or full */ } },
+  };
+
+  /* ---------- state ---------- */
+
+  const S = {
+    units: store.get('units', 'us'),
+    profileId: store.get('profile', 'clarity'),
+    windPrior: store.get('windPrior', 'auto'),
+    input: '', place: null, hours: null, hourByMs: new Map(), climo: null, second: null, nowMs: 0,
+    ctx: null, derived: null, scores: {}, windows: {}, dayKeys: [], day: null, sel: null,
+    loading: false, error: null, notes: [], updatedAt: null, loadId: 0, climoState: 'idle', nwsState: 'idle',
+    recents: store.get('recents', []), saved: store.get('saved', []), log: store.get('log', []), logResults: store.get('logResults', {}),
+    chart: null,
+  };
+  if (!C.PROFILE_BY_ID[S.profileId]) S.profileId = 'clarity';
+  const fmt = () => F.makeFmt(S.units);
+  const profile = () => C.PROFILE_BY_ID[S.profileId];
+  const tz = () => (S.place ? S.place.tz : 'UTC');
+
+  /* ---------- loading ---------- */
+
+  const clim = (place) => 'climo:' + place.lat.toFixed(2) + ',' + place.lon.toFixed(2);
+
+  async function loadClimo(place) {
+    const key = clim(place);
+    const hit = P.cache.get(key, 90 * 86400000);
+    if (hit) return hit.v;
+    const years = [2015, new Date().getUTCFullYear() - 1];
+    const ser = await P.fetchClimateSeries(place, years);
+    const table = C.buildClimatology(ser.timesMs, ser.dewC, years);
+    P.cache.set(key, table);
+    return table;
+  }
+
+  async function load(input) {
+    input = String(input || '').trim();
+    if (!input) return;
+    const id = ++S.loadId;
+    S.loading = true; S.error = null; S.notes = []; S.climo = null; S.second = null; S.climoState = 'loading'; S.nwsState = 'loading';
+    render();
+    let place;
+    try { place = await P.resolvePlace(input); }
+    catch (e) { if (id === S.loadId) fail(e, input); return; }
+    if (id !== S.loadId) return;
+    S.place = place; S.input = input;
+
+    const fcP = P.fetchForecast(place);
+    const aqP = P.fetchAirQuality(place).then((r) => r, (e) => ({ error: e, records: [] }));
+    loadClimo(place).then((c) => { if (id !== S.loadId) return; S.climo = c; S.climoState = 'ok'; refine(); }, () => { if (id === S.loadId) { S.climoState = 'failed'; render(); } });
+    P.fetchSecondOpinion(place).then((r) => { if (id !== S.loadId) return; S.second = r.records; S.nwsState = 'ok'; refine(); }, () => { if (id === S.loadId) { S.nwsState = 'failed'; render(); } });
+
+    let fc;
+    try { fc = await fcP; } catch (e) { if (id === S.loadId) fail(e, input); return; }
+    if (id !== S.loadId) return;
+    const aq = await aqP;
+    if (id !== S.loadId) return;
+
+    S.hours = C.mergeHourly(fc.records, aq.records || []);
+    S.hourByMs = new Map(S.hours.map((r) => [r.ms, r]));
+    S.updatedAt = fc.at;
+    if (fc.stale) S.notes.push({ kind: 'warn', text: "Couldn't reach Open-Meteo. Showing the saved forecast from " + F.ageLabel(fc.at, Date.now()) + '.' });
+    else if (fc.fromCache && Date.now() - fc.at > 3 * 3600000) S.notes.push({ kind: 'warn', text: 'Forecast is ' + F.ageLabel(fc.at, Date.now()).replace(' ago', '') + ' old.' });
+    if (!aq.records || !aq.records.length) S.notes.push({ kind: 'warn', text: 'Partial: smoke and particulates are not included, so scores use the remaining factors.' });
+    else if (!aq.records.some((r) => r.pm25 != null)) S.notes.push({ kind: 'warn', text: 'Partial: no air-quality data for this location.' });
+    S.nowMs = Math.floor(Date.now() / HOUR) * HOUR;
+    S.loading = false;
+    recompute();
+    pickDay(true);
+    remember(place, input);
+    try { history.replaceState(null, '', '#' + encodeURIComponent(input)); } catch (e) { /* file:// or sandbox */ }
+    render();
+    $('#q').value = input;
+  }
+
+  function fail(e, input) {
+    S.loading = false;
+    const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+    S.error = {
+      input,
+      text: offline ? "You're offline and this place has no saved forecast." : e && e.message ? e.message : 'Something went wrong.',
+      kind: e && e.kind,
+    };
+    S.place = null; S.hours = null;
+    render();
+  }
+
+  function refine() { if (!S.hours) return; recompute(); const keepDay = S.day; pickDay(false); if (keepDay && S.dayKeys.includes(keepDay)) S.day = keepDay; render(); }
+
+  function recompute() {
+    const place = S.place;
+    const ctx = { place, hours: S.hours, nowMs: S.nowMs, climo: S.climo, second: S.second };
+    S.ctx = ctx;
+    S.derived = C.derive(ctx);
+    const prior = S.windPrior === 'auto' ? C.windPriorFor(place) : S.windPrior;
+    for (const p of C.PROFILES) {
+      S.scores[p.id] = C.score(ctx, p, { derived: S.derived, windPrior: prior });
+      S.windows[p.id] = C.bestWindows(S.scores[p.id], { tz: place.tz, fromMs: S.nowMs });
+    }
+    const keys = [];
+    for (const r of S.hours) if (r.ms >= S.nowMs) { const k = C.localParts(r.ms, place.tz).date; if (!keys.includes(k)) keys.push(k); }
+    S.dayKeys = keys.slice(0, 8);
+  }
+
+  function remember(place, input) {
+    const label = place.name + (place.state ? ', ' + place.state : '');
+    S.recents = [{ input, label }].concat(S.recents.filter((x) => x.input !== input)).slice(0, 5);
+    store.set('recents', S.recents);
+    store.set('last', input);
+  }
+
+  /* ---------- selection ---------- */
+
+  const dayWindows = (pid, day) => (S.windows[pid] || []).filter((w) => w.day === day).sort((a, b) => a.rank - b.rank);
+  function bestOverall(pid, maxLeadH) {
+    let best = null;
+    for (const w of S.windows[pid] || []) {
+      if (w.rank !== 1) continue;
+      if (maxLeadH != null && w.startMs - S.nowMs > maxLeadH * HOUR) continue;
+      if (!best || w.score > best.score) best = w;
+    }
+    return best;
+  }
+  function pickDay(force) {
+    const best = bestOverall(S.profileId);
+    if (force || !S.day || !S.dayKeys.includes(S.day)) S.day = best ? best.day : S.dayKeys[0] || null;
+    const w = S.day ? dayWindows(S.profileId, S.day)[0] : null;
+    S.sel = w ? { kind: 'window', day: S.day, rank: w.rank } : null;
+  }
+  function selectProfile(pid, keepDay) {
+    S.profileId = pid; store.set('profile', pid);
+    if (keepDay && S.day) { const w = dayWindows(pid, S.day)[0]; S.sel = w ? { kind: 'window', day: S.day, rank: 1 } : null; }
+    else pickDay(true);
+    render();
+  }
+  function selectDay(day) {
+    S.day = day;
+    const w = dayWindows(S.profileId, day)[0];
+    S.sel = w ? { kind: 'window', day, rank: w.rank } : null;
+    renderWeek(); renderDay();
+  }
+  function select(sel) {
+    S.sel = sel;
+    if (S.chart) S.chart.setSel(sel);
+    renderWhy();
+  }
+
+  /* ---------- small UI parts ---------- */
+
+  const BAND_LABEL = { excellent: 'Excellent', good: 'Good', fair: 'Fair', poor: 'Poor', skip: 'Skip' };
+  const bandChip = (band, text) => h('span', { class: 'chip band-' + band }, text || BAND_LABEL[band]);
+
+  function dots(level) {
+    const n = { high: 3, medium: 2, low: 1 }[level] || 0;
+    return h('span', { class: 'dots', role: 'img', 'aria-label': level + ' confidence' },
+      [0, 1, 2].map((i) => h('i', { class: i < n ? 'on' : '' })), h('span', { class: 'dots-text' }, level));
+  }
+
+  const hoursOfDay = (pid, day) => (S.scores[pid] || []).filter((x) => C.localParts(x.ms, tz()).date === day);
+  const winLabel = (w) => F.rangeLabel(w.startMs, w.endMs, tz());
+  const dayLabel = (ms) => F.weekday(ms, tz());
+
+  function reasonText(r) { return F.describe(r.factor, r.sign, r.raw, fmt()); }
+
+  const windowAgg = (w) => C.aggregate(S.scores[S.profileId].filter((x) => x.ms >= w.startMs && x.ms < w.endMs));
+  // Short single line for day cards: the reason that explains the score most.
+  function headline(w) {
+    const agg = windowAgg(w);
+    if (!agg) return '';
+    const pos = agg.reasons.find((r) => r.sign > 0), neg = agg.reasons.find((r) => r.sign < 0);
+    const r = w.score >= 50 ? pos || neg : neg || pos;
+    return r ? F.shortReason(r.factor, r.sign, r.raw, fmt()) : '';
+  }
+  // Hero lines: strongest helper and strongest hurter, in full words.
+  function heroReasons(w) {
+    const agg = windowAgg(w);
+    if (!agg) return [];
+    return [agg.reasons.find((r) => r.sign > 0), agg.reasons.find((r) => r.sign < 0)].filter(Boolean)
+      .map((r) => h('div', { class: 'hl ' + (r.sign > 0 ? 'pos' : 'neg') }, h('span', { class: 'sym', 'aria-hidden': 'true' }, r.sign > 0 ? '+' : '−'), h('span', null, reasonText(r))));
+  }
+
+  /* ---------- render: top level ---------- */
+
+  function render() {
+    renderChips(); renderBanner();
+    const app = clear($('#app'));
+    for (const b of document.querySelectorAll('[data-units]')) b.setAttribute('aria-pressed', String(b.dataset.units === S.units));
+    if (S.error) { app.appendChild(errorCard()); return; }
+    if (S.loading && !S.hours) { app.appendChild(skeleton()); return; }
+    if (!S.hours) { app.appendChild(welcome()); return; }
+    app.appendChild(h('section', { id: 'hero', 'aria-label': 'Best time' }));
+    app.appendChild(h('nav', { id: 'profiles', 'aria-label': 'Shoot type' }));
+    app.appendChild(h('section', { id: 'compare' }));
+    app.appendChild(h('section', { id: 'week', 'aria-label': 'Week' }));
+    app.appendChild(h('div', { id: 'day' }));
+    app.appendChild(h('details', { id: 'raw', class: 'card' }));
+    app.appendChild(h('details', { id: 'logsec', class: 'card' }));
+    renderHero(); renderProfiles(); renderCompare(); renderWeek(); renderDay(); renderRaw(); renderLog();
+  }
+
+  function renderChips() {
+    const el = clear($('#chips'));
+    const seen = new Set();
+    const add = (label, input, cls) => { if (seen.has(input)) return; seen.add(input); el.appendChild(h('button', { type: 'button', class: 'pill ' + (cls || ''), onclick: () => { $('#q').value = input; load(input); } }, label)); };
+    for (const x of S.saved) add('★ ' + x.label, x.input, 'saved');
+    for (const x of S.recents) add(x.label, x.input);
+    el.hidden = !el.children.length;
+  }
+
+  function renderBanner() {
+    const el = clear($('#banner'));
+    const notes = S.notes.slice();
+    if (S.hours && S.climoState === 'failed') notes.push({ kind: 'info', text: 'Climate comparison unavailable; dew point uses its absolute scale only.' });
+    if (S.hours && S.nwsState === 'failed') notes.push({ kind: 'info', text: 'NWS cross-check unavailable; confidence uses forecast lead time only.' });
+    if (S.hours && (S.climoState === 'loading' || S.nwsState === 'loading')) notes.push({ kind: 'info', text: 'Refining with climate history and the NWS cross-check…' });
+    for (const n of notes) el.appendChild(h('div', { class: 'banner ' + n.kind, role: n.kind === 'warn' ? 'status' : null }, n.text));
+  }
+
+  function skeleton() {
+    return h('div', { class: 'skeleton', 'aria-busy': 'true', 'aria-label': 'Loading' },
+      h('div', { class: 'sk sk-hero' }), h('div', { class: 'sk sk-row' }), h('div', { class: 'sk-days' }, [0, 1, 2, 3, 4, 5, 6].map(() => h('div', { class: 'sk sk-day' }))), h('div', { class: 'sk sk-chart' }));
+  }
+
+  function errorCard() {
+    return h('section', { class: 'card error', role: 'alert' },
+      h('h2', null, "Couldn't load that place"),
+      h('p', null, S.error.text),
+      h('div', { class: 'row' },
+        h('button', { type: 'button', class: 'btn primary', onclick: () => load(S.error.input) }, 'Try again'),
+        h('span', { class: 'muted' }, 'Use a 5-digit US zip code, or latitude and longitude like 42.65, -71.15.')));
+  }
+
+  function welcome() {
+    return h('section', { class: 'card welcome' },
+      h('h2', null, 'Which hour is clearest this week?'),
+      h('p', null, 'Enter a US zip code to get an hour-by-hour score for the next 7 days, the best shooting windows, and the reason behind each number.'),
+      h('div', { class: 'types' }, C.PROFILES.map((p) => h('div', { class: 'type' }, h('strong', null, p.name), h('span', null, p.description)))),
+      h('p', { class: 'muted' }, 'Try one:'),
+      h('div', { class: 'chips' }, [['01810', 'Andover, MA'], ['80202', 'Denver, CO'], ['98101', 'Seattle, WA'], ['33101', 'Miami, FL']].map(([z, n]) =>
+        h('button', { type: 'button', class: 'pill', onclick: () => { $('#q').value = z; load(z); } }, z + ' · ' + n))));
+  }
+
+  /* ---------- hero ---------- */
+
+  function renderHero() {
+    const el = clear($('#hero'));
+    el.className = 'card hero';
+    const pf = profile();
+    const best = bestOverall(S.profileId);
+    const near = bestOverall(S.profileId, 48);
+    const place = S.place;
+    const key = place.lat.toFixed(4) + ',' + place.lon.toFixed(4);
+    const isSaved = S.saved.some((x) => x.input === key || x.input === place.zip);
+    const placeRow = h('div', { class: 'place' },
+      h('div', null, h('strong', null, place.name + (place.state ? ', ' + place.state : '')),
+        h('span', { class: 'muted' }, ' · ' + (place.zip ? place.zip + ' · ' : '') + F.makeFmt(S.units).height(place.elevM) + ' elevation')),
+      h('button', { type: 'button', class: 'pill small', 'aria-pressed': String(isSaved), onclick: toggleSaved }, isSaved ? '★ Saved' : '☆ Save spot'));
+    el.appendChild(placeRow);
+    if (!best) {
+      el.appendChild(h('p', { class: 'big-empty' }, 'No ' + pf.name.toLowerCase() + ' hours in the forecast for this place (sun never reaches the needed angle, or data is missing).'));
+      return;
+    }
+    el.appendChild(h('div', { class: 'hero-main' },
+      h('div', { class: 'hero-score band-' + best.band }, h('span', { class: 'num' }, String(Math.round(best.score))), h('span', { class: 'lbl' }, BAND_LABEL[best.band])),
+      h('div', { class: 'hero-text' },
+        h('div', { class: 'eyebrow' }, 'Best ' + pf.name.toLowerCase() + ' window this week'),
+        h('div', { class: 'when' }, dayLabel(best.startMs) + ' ' + F.dateLabel(best.startMs, tz()) + ', ' + winLabel(best)),
+        h('div', { class: 'why-lines' }, heroReasons(best)),
+        h('div', { class: 'meta' }, dots(best.confidence), leadNote(best)),
+        h('button', { type: 'button', class: 'btn', onclick: () => { S.day = best.day; S.sel = { kind: 'window', day: best.day, rank: best.rank }; renderWeek(); renderDay(); $('#day').scrollIntoView({ behavior: 'smooth', block: 'start' }); } }, 'See that day'))));
+    if (near && best && near.startMs !== best.startMs) {
+      el.appendChild(h('div', { class: 'near' },
+        h('span', { class: 'muted' }, 'Next 48 hours: '),
+        h('button', { type: 'button', class: 'linkish', onclick: () => { S.day = near.day; S.sel = { kind: 'window', day: near.day, rank: near.rank }; renderWeek(); renderDay(); } },
+          dayLabel(near.startMs) + ' ' + winLabel(near)), ' ', bandChip(near.band, Math.round(near.score) + ' ' + BAND_LABEL[near.band])));
+    }
+    const pct = climateBadge(best);
+    if (pct) el.appendChild(h('div', { class: 'badge-row' }, h('span', { class: 'chip neutral' }, pct)));
+  }
+
+  function leadNote(w) {
+    const days = (w.startMs - S.nowMs) / (24 * HOUR);
+    const t = days < 1 ? 'today or tomorrow' : 'about ' + Math.round(days) + ' day' + (Math.round(days) === 1 ? '' : 's') + ' out';
+    return h('span', { class: 'muted' }, ' ' + t + (w.confidence === 'low' ? ': an early guide, it will move' : ''));
+  }
+
+  function climateBadge(w) {
+    const sc = (S.scores[S.profileId] || []).find((x) => x.ms === w.startMs);
+    if (!sc || !S.derived) return null;
+    const p = S.derived[sc.derivedIndex].dpPercentile;
+    if (!isNum(p)) return null;
+    const when = 'for this date';
+    if (p <= 10) return 'Dew point among the driest 10% ' + when;
+    if (p <= 30) return 'Drier than usual ' + when + ' (' + F.ordinal(p) + ' percentile)';
+    if (p >= 90) return 'Dew point among the most humid 10% ' + when;
+    if (p >= 70) return 'More humid than usual ' + when + ' (' + F.ordinal(p) + ' percentile)';
+    return 'Dew point typical ' + when;
+  }
+
+  function toggleSaved() {
+    const p = S.place;
+    const key = p.lat.toFixed(4) + ',' + p.lon.toFixed(4);
+    const input = p.zip && S.input === p.zip ? p.zip : key;
+    const i = S.saved.findIndex((x) => x.input === input || x.input === key);
+    if (i >= 0) S.saved.splice(i, 1);
+    else S.saved.unshift({ input, label: p.name + (p.state ? ', ' + p.state : '') });
+    S.saved = S.saved.slice(0, 8);
+    store.set('saved', S.saved);
+    renderChips(); renderHero();
+  }
+
+  /* ---------- profile switcher and comparison ---------- */
+
+  function renderProfiles() {
+    const el = clear($('#profiles'));
+    el.className = 'profiles';
+    for (const p of C.PROFILES) {
+      el.appendChild(h('button', { type: 'button', class: 'tab', 'aria-pressed': String(p.id === S.profileId), title: p.description, onclick: () => selectProfile(p.id, true) }, p.name));
+    }
+  }
+
+  function renderCompare() {
+    const el = clear($('#compare'));
+    el.className = 'compare';
+    el.appendChild(h('div', { class: 'compare-head' }, h('strong', null, 'Best this week by shoot type')));
+    const list = h('div', { class: 'compare-list' });
+    for (const p of C.PROFILES) {
+      const w = bestOverall(p.id);
+      list.appendChild(h('button', { type: 'button', class: 'cmp' + (p.id === S.profileId ? ' current' : ''), onclick: () => { S.profileId = p.id; store.set('profile', p.id); S.day = w ? w.day : S.day; S.sel = w ? { kind: 'window', day: w.day, rank: w.rank } : null; render(); } },
+        h('span', { class: 'cmp-name' }, p.name),
+        w ? h('span', { class: 'cmp-when' }, dayLabel(w.startMs) + ' ' + winLabel(w)) : h('span', { class: 'cmp-when muted' }, 'none'),
+        w ? bandChip(w.band, String(Math.round(w.score))) : null));
+    }
+    el.appendChild(list);
+  }
+
+  /* ---------- week strip ---------- */
+
+  function renderWeek() {
+    const el = clear($('#week'));
+    el.className = 'week';
+    const best = bestOverall(S.profileId);
+    for (const day of S.dayKeys) {
+      const w = dayWindows(S.profileId, day)[0];
+      const first = (S.scores[S.profileId].find((x) => C.localParts(x.ms, tz()).date === day) || {}).ms;
+      const label = first != null ? dayLabel(first) : '';
+      const isToday = day === C.localParts(S.nowMs, tz()).date;
+      const isBest = best && best.day === day;
+      const btn = h('button', { type: 'button', class: 'day' + (S.day === day ? ' active' : '') + (isBest ? ' best' : '') + (w && w.confidence === 'low' ? ' lowconf' : ''), 'aria-pressed': String(S.day === day), 'aria-label': label + ' ' + day + (w ? ', ' + Math.round(w.score) + ' ' + BAND_LABEL[w.band] + ', ' + winLabel(w) : ', no scored hours'), onclick: () => selectDay(day) },
+        isBest ? h('span', { class: 'tag-best' }, 'Best') : null,
+        h('span', { class: 'dow' }, isToday ? 'Today' : label),
+        h('span', { class: 'dte' }, first != null ? F.dateLabel(first, tz()) : day.slice(5)),
+        w ? h('span', { class: 'score band-' + w.band }, h('b', null, String(Math.round(w.score))), h('i', null, BAND_LABEL[w.band])) : h('span', { class: 'score band-none' }, h('b', null, '–'), h('i', null, 'none')),
+        w ? h('span', { class: 'win' }, winLabel(w)) : null,
+        w ? dots(w.confidence) : null,
+        w ? h('span', { class: 'rs' }, headline(w)) : null);
+      el.appendChild(btn);
+    }
+  }
+
+  /* ---------- day panel: chart + why + sun ---------- */
+
+  function renderDay() {
+    const el = clear($('#day'));
+    el.className = 'day-panel';
+    if (!S.day) return;
+    const hrs = hoursOfDay(S.profileId, S.day);
+    const first = hrs[0] ? hrs[0].ms : S.nowMs;
+    el.appendChild(h('div', { class: 'card chart-card' },
+      h('div', { class: 'card-head' }, h('h2', null, dayLabel(first) + ' ' + F.dateLabel(first, tz()) + ' · ' + profile().name), h('span', { class: 'muted' }, 'Tap a bar or a window for the reasons')),
+      h('div', { id: 'chartbox', class: 'chartbox' }),
+      h('p', { class: 'legend' }, 'Bars: hourly score, colored by band. Line: dew point. Triangle: fog likely. Gray band: night. Faded bars: low-confidence forecast or past hours.')));
+    el.appendChild(h('div', { class: 'side' }, h('div', { id: 'why', class: 'card' }), h('div', { id: 'sun', class: 'card' })));
+    drawChart();
+    renderWhy();
+    renderSun();
+  }
+
+  let resizeTimer = null;
+  window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { if (S.hours && $('#chartbox')) drawChart(); }, 150); });
+
+  function drawChart() {
+    const box = clear($('#chartbox'));
+    const all = hoursOfDay(S.profileId, S.day);
+    const idx = all.map((x, i) => (x.scored ? i : -1)).filter((i) => i >= 0);
+    if (!idx.length) { box.appendChild(h('p', { class: 'muted pad' }, 'No ' + profile().name.toLowerCase() + ' hours on this day (the sun is too low or too high for this shoot type, or inputs are missing).')); S.chart = null; return; }
+    const lo = Math.max(0, idx[0] - 1), hi = Math.min(all.length - 1, idx[idx.length - 1] + 1);
+    const hs = all.slice(lo, hi + 1);
+    const f = fmt();
+    const W = Math.max(300, Math.floor(box.clientWidth || 340)), Ht = W < 520 ? 270 : 300;
+    const padL = 30, padR = 10, padT = 24, padB = 70;
+    const cw = W - padL - padR, ch = Ht - padT - padB;
+    const n = hs.length, bw = cw / n;
+    const x0 = hs[0].ms;
+    const xOf = (ms) => padL + ((ms - x0) / HOUR) * bw;
+    const yOf = (v) => padT + ch - (v / 100) * ch;
+    const svg = s('svg', { viewBox: '0 0 ' + W + ' ' + Ht, width: W, height: Ht, role: 'group', 'aria-label': profile().name + ' score by hour for ' + S.day, class: 'chart' });
+
+    // night shading and sun lines
+    const st = C.sunTimes(S.place.lat, S.place.lon, S.day, tz());
+    const endX = padL + cw;
+    const nightRect = (a, b) => { const xa = Math.max(padL, a), xb = Math.min(endX, b); if (xb > xa) svg.appendChild(s('rect', { x: xa, y: padT, width: xb - xa, height: ch, class: 'night' })); };
+    if (st.sunrise != null && st.sunset != null) { nightRect(padL, xOf(st.sunrise)); nightRect(xOf(st.sunset), endX); }
+    else if (st.maxElev < -0.833) nightRect(padL, endX);
+
+    // gridlines at band thresholds
+    for (const v of [0, 20, 40, 60, 80, 100]) {
+      svg.appendChild(s('line', { x1: padL, x2: endX, y1: yOf(v), y2: yOf(v), class: 'grid' }));
+      svg.appendChild(s('text', { x: padL - 5, y: yOf(v) + 4, class: 'axis', 'text-anchor': 'end' }, String(v)));
+    }
+
+    // bars
+    const barEls = new Map();
+    const sc = hs;
+    hs.forEach((hr, i) => {
+      const x = padL + i * bw;
+      const past = hr.ms < S.nowMs;
+      const g = s('g', { class: 'hour', tabindex: '0', role: 'button', 'data-ms': hr.ms,
+        'aria-label': F.weekday(hr.ms, tz()) + ' ' + F.hourLabel(hr.ms, tz()) + ': ' + (hr.scored ? Math.round(hr.score) + ' ' + BAND_LABEL[hr.band] + ', ' + hr.confidence + ' confidence' : 'not scored for this shoot type') });
+      if (hr.scored) {
+        const hgt = Math.max(2, (hr.score / 100) * ch);
+        const op = past ? 0.35 : hr.confidence === 'low' ? 0.5 : hr.confidence === 'medium' ? 0.8 : 1;
+        g.appendChild(s('rect', { x: x + 1.5, y: padT + ch - hgt, width: Math.max(2, bw - 3), height: hgt, rx: 2, class: 'bar band-' + hr.band, style: { opacity: op } }));
+        if (bw >= 22) g.appendChild(s('text', { x: x + bw / 2, y: padT + ch - hgt - 4, class: 'barlbl', 'text-anchor': 'middle' }, String(Math.round(hr.score))));
+        if (hr.flags.includes('fog')) g.appendChild(s('path', { d: 'M' + (x + bw / 2 - 4) + ' ' + (padT + ch - 3) + ' l4 -7 l4 7 z', class: 'fogmark' }));
+      } else g.appendChild(s('rect', { x: x + 1.5, y: padT + ch - 3, width: Math.max(2, bw - 3), height: 3, rx: 1.5, class: 'bar stub' }));
+      g.appendChild(s('rect', { x, y: padT, width: bw, height: ch + 4, class: 'hit' }));
+      g.addEventListener('click', () => select({ kind: 'hour', ms: hr.ms }));
+      g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select({ kind: 'hour', ms: hr.ms }); } });
+      g.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') select({ kind: 'hour', ms: hr.ms }); });
+      svg.appendChild(g);
+      barEls.set(hr.ms, g);
+    });
+
+    // dew point line with a direct label
+    const recs = hs.map((hr) => S.hourByMs.get(hr.ms));
+    const dews = recs.map((r) => (r && isNum(r.dewC) ? r.dewC : null));
+    const dv = dews.filter((v) => v != null);
+    if (dv.length > 1) {
+      const dmin = Math.min(...dv), dmax = Math.max(...dv), span = Math.max(dmax - dmin, 2);
+      const yd = (v) => padT + 8 + (1 - (v - dmin) / span) * (ch - 16);
+      const pts = dews.map((v, i) => (v == null ? null : [padL + i * bw + bw / 2, yd(v)])).filter(Boolean);
+      svg.appendChild(s('polyline', { points: pts.map((p) => p.join(',')).join(' '), class: 'dewline', fill: 'none' }));
+      const lp = pts[pts.length - 1], lv = dews[dews.length - 1] != null ? dews[dews.length - 1] : dv[dv.length - 1];
+      svg.appendChild(s('text', { x: Math.min(lp[0], endX - 2), y: Math.max(padT + 10, lp[1] - 8), class: 'dewlbl', 'text-anchor': 'end' }, 'Dew ' + f.temp(lv)));
+    }
+
+    // sun lines
+    const sunLine = (ms, label) => {
+      if (ms == null) return;
+      const x = xOf(ms);
+      if (x < padL || x > endX) return;
+      svg.appendChild(s('line', { x1: x, x2: x, y1: padT - 6, y2: padT + ch, class: 'sunline' }));
+      svg.appendChild(s('text', { x: Math.min(Math.max(x, padL + 18), endX - 18), y: padT - 9, class: 'sunlbl', 'text-anchor': 'middle' }, label + ' ' + F.clockLabel(ms, tz()).replace(' ', '')));
+    };
+    sunLine(st.sunrise, 'Rise'); sunLine(st.sunset, 'Set');
+
+    // x labels
+    const every = Math.max(1, Math.ceil(30 / bw));
+    hs.forEach((hr, i) => {
+      if (i % every) return;
+      const p = F.parts(hr.ms, tz());
+      svg.appendChild(s('text', { x: padL + i * bw + bw / 2, y: padT + ch + 14, class: 'axis', 'text-anchor': 'middle' }, h12s(p.hour)));
+    });
+
+    // windows
+    const wins = dayWindows(S.profileId, S.day);
+    const winEls = new Map();
+    wins.forEach((w) => {
+      if (w.endMs <= x0 || w.startMs >= x0 + n * HOUR) return;
+      const xa = xOf(w.startMs), xb = xOf(w.endMs);
+      const g = s('g', { class: 'win', tabindex: '0', role: 'button', 'aria-label': 'Window ' + w.rank + ': ' + winLabel(w) + ', score ' + Math.round(w.score) + ' ' + BAND_LABEL[w.band] });
+      g.appendChild(s('rect', { x: xa + 1, y: padT + ch + 22, width: Math.max(8, xb - xa - 2), height: 20, rx: 5, class: 'winrect band-' + w.band }));
+      g.appendChild(s('text', { x: (xa + xb) / 2, y: padT + ch + 36, class: 'winlbl band-' + w.band, 'text-anchor': 'middle' }, '#' + w.rank + ' ' + Math.round(w.score)));
+      const pick = () => select({ kind: 'window', day: S.day, rank: w.rank });
+      g.addEventListener('click', pick);
+      g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
+      svg.appendChild(g);
+      winEls.set(w.rank, g);
+    });
+    svg.appendChild(s('text', { x: padL, y: Ht - 8, class: 'axis', 'text-anchor': 'start' }, 'Best windows (3 hours, ranked)'));
+
+    box.appendChild(svg);
+    const selRect = s('rect', { class: 'selbox', rx: 4, height: ch + 6, y: padT - 1, width: 0 });
+    svg.insertBefore(selRect, svg.firstChild.nextSibling || null);
+    S.chart = {
+      setSel(sel) {
+        for (const g of barEls.values()) g.classList.remove('sel');
+        for (const g of winEls.values()) g.classList.remove('sel');
+        selRect.setAttribute('width', 0);
+        if (!sel) return;
+        let a, b;
+        if (sel.kind === 'hour') { const g = barEls.get(sel.ms); if (g) g.classList.add('sel'); a = xOf(sel.ms); b = a + bw; }
+        else { const w = wins.find((x) => x.rank === sel.rank); if (w) { a = xOf(w.startMs); b = xOf(w.endMs); const g = winEls.get(w.rank); if (g) g.classList.add('sel'); } }
+        if (a != null) { selRect.setAttribute('x', Math.max(padL, a)); selRect.setAttribute('width', Math.max(0, Math.min(endX, b) - Math.max(padL, a))); }
+      },
+    };
+    S.chart.setSel(S.sel);
+  }
+  const h12s = (hr) => (hr === 0 ? '12a' : hr < 12 ? hr + 'a' : hr === 12 ? '12p' : hr - 12 + 'p');
+
+  /* ---------- why panel ---------- */
+
+  function selectedScores() {
+    const sel = S.sel;
+    const list = S.scores[S.profileId] || [];
+    if (!sel) return null;
+    if (sel.kind === 'hour') {
+      const sc = list.find((x) => x.ms === sel.ms);
+      return sc ? { title: dayLabel(sc.ms) + ' ' + F.hourLabel(sc.ms, tz()), hours: [sc], isWindow: false, ms: sc.ms } : null;
+    }
+    const w = dayWindows(S.profileId, sel.day).find((x) => x.rank === sel.rank);
+    if (!w) return null;
+    return { title: (w.rank === 1 ? 'Best window' : 'Window #' + w.rank) + ' · ' + dayLabel(w.startMs) + ' ' + winLabel(w), hours: list.filter((x) => x.ms >= w.startMs && x.ms < w.endMs), isWindow: true, ms: w.startMs };
+  }
+
+  function renderWhy() {
+    const el = $('#why');
+    if (!el) return;
+    clear(el);
+    const sel = selectedScores();
+    el.appendChild(h('div', { class: 'card-head' }, h('h2', null, 'Why')));
+    if (!sel) { el.appendChild(h('p', { class: 'muted' }, 'Pick an hour or a window to see what drives its score.')); return; }
+    const one = sel.hours[0];
+    if (!one || !one.scored) { el.appendChild(h('p', null, sel.title), h('p', { class: 'muted' }, 'This hour is not scored for ' + profile().name.toLowerCase() + '. ' + (profile().id === 'fog' ? 'Fog is scored from 3 am to 9 am local time.' : 'The sun is too far below the horizon.'))); return; }
+    const agg = sel.isWindow ? C.aggregate(sel.hours) : C.aggregate([one]);
+    const score = agg.score, band = C.bandOf(score);
+    el.appendChild(h('div', { class: 'why-top' },
+      h('div', { class: 'why-score band-' + band }, h('span', { class: 'num' }, String(Math.round(score))), h('span', { class: 'lbl' }, BAND_LABEL[band])),
+      h('div', null, h('div', { class: 'why-title' }, sel.title), h('div', { class: 'meta' }, dots(agg.confidence), sel.isWindow ? h('span', { class: 'muted' }, ' ' + sel.hours.length + '-hour average') : null))));
+    if (agg.capped) el.appendChild(h('p', { class: 'flag warn' }, 'Capped at Fair: a limiting factor (haze, smoke or humid air) is poor even though others look good.'));
+    const good = agg.reasons.filter((r) => r.sign > 0), bad = agg.reasons.filter((r) => r.sign < 0);
+    const list = (title, items, cls, sym) => items.length ? h('div', { class: 'reasons ' + cls }, h('h3', null, title), h('ul', null, items.map((r) => h('li', null, h('span', { class: 'sym', 'aria-hidden': 'true' }, sym), h('span', null, reasonText(r)))))) : null;
+    for (const blk of [list('Helping', good, 'good', '+'), list('Hurting', bad, 'bad', '−')]) if (blk) el.appendChild(blk);
+    if (!good.length && !bad.length) el.appendChild(h('p', { class: 'muted' }, 'All factors sit near neutral for this hour.'));
+    const flagText = { fog: 'Fog likely (spread within 3°F, humidity 95% or more)', smoke: 'Smoke or heavy haze in the air', dust: 'Dust in the air', rain: 'Rain in this hour', shimmer: 'Heat shimmer likely for telephoto work', lowvis: 'Visibility under 3 miles' };
+    const fl = h('div', { class: 'flags' }, agg.flags.map((k) => h('span', { class: 'chip flag-' + k }, flagText[k] || k)));
+    if (agg.flags.length) el.appendChild(fl);
+    const miss = (one.missing || []).filter((id) => !(id === 'ventilation' || id === 'heatShimmer' || id === 'airmass' || id === 'rainScrub'));
+    if (miss.length) el.appendChild(h('p', { class: 'flag warn' }, 'Scored without ' + miss.map((id) => F.MISSING_TEXT[id] || id).join(', ') + ' (not available for this hour).'));
+    el.appendChild(h('p', { class: 'muted small' }, 'Confidence: ' + one.confidenceNote + '.'));
+    const det = h('details', { class: 'factors' }, h('summary', null, 'All factors in this score'));
+    const tbl = h('div', { class: 'ftable' });
+    for (const fc of agg.factors.slice().sort((a, b) => b.weight - a.weight)) {
+      const parts = F.describeParts(fc.id, 0, fc.raw, fmt());
+      tbl.appendChild(h('div', { class: 'frow' },
+        h('div', { class: 'fname' }, C.FACTOR_LABELS[fc.id], h('small', null, Math.round(fc.weight) + '% weight')),
+        h('div', { class: 'fbar', role: 'img', 'aria-label': Math.round(fc.score * 100) + ' out of 100' }, h('i', { style: { width: Math.round(fc.score * 100) + '%' }, class: 'fill' })),
+        h('div', { class: 'fval' }, parts.value)));
+    }
+    det.appendChild(tbl);
+    el.appendChild(det);
+  }
+
+  /* ---------- sunrise and sunset card ---------- */
+
+  function renderSun() {
+    const el = $('#sun');
+    if (!el) return;
+    clear(el);
+    el.appendChild(h('div', { class: 'card-head' }, h('h2', null, 'Sunrise and sunset')));
+    const st = C.sunTimes(S.place.lat, S.place.lon, S.day, tz());
+    const t = (ms) => F.clockLabel(ms, tz());
+    if (st.sunrise == null || st.sunset == null) {
+      el.appendChild(h('p', { class: 'muted' }, st.maxElev > 0 ? 'The sun stays up all day at this latitude, so there is no sunrise or sunset.' : 'The sun stays below the horizon all day (polar night).'));
+      return;
+    }
+    const gw = dayWindows('golden', S.day);
+    const am = gw.find((w) => w.startMs < st.sunrise + 4 * HOUR && w.startMs < zonedNoon()), pm = gw.find((w) => w.startMs >= zonedNoon());
+    const row = (label, ms, w, hourMs) => {
+      const rec = S.hourByMs.get(Math.floor(ms / HOUR) * HOUR);
+      return h('div', { class: 'sunrow' },
+        h('div', null, h('strong', null, label + ' ' + t(ms)), rec && isNum(rec.cloudLow) ? h('div', { class: 'muted small' }, 'Cloud at that hour: low ' + fmt().pct(rec.cloudLow) + ', mid ' + fmt().pct(rec.cloudMid) + ', high ' + fmt().pct(rec.cloudHigh)) : null),
+        w ? h('button', { type: 'button', class: 'pill small', onclick: () => { S.profileId = 'golden'; store.set('profile', 'golden'); S.sel = { kind: 'window', day: S.day, rank: w.rank }; render(); } }, bandChip(w.band, Math.round(w.score) + ' ' + BAND_LABEL[w.band]), ' golden light') : null);
+    };
+    el.appendChild(row('Sunrise', st.sunrise, am));
+    el.appendChild(row('Sunset', st.sunset, pm));
+    el.appendChild(h('p', { class: 'muted small' }, 'Golden hour: ' + (st.goldenAM[0] != null && st.goldenAM[1] != null ? t(st.goldenAM[0]) + ' to ' + t(st.goldenAM[1]) : '–') + ' and ' + (st.goldenPM[0] != null && st.goldenPM[1] != null ? t(st.goldenPM[0]) + ' to ' + t(st.goldenPM[1]) : '–') + ' (sun between −4° and 6°).'));
+    const fw = dayWindows('fog', S.day)[0];
+    el.appendChild(h('div', { class: 'sunrow' },
+      h('div', null, h('strong', null, 'Fog potential'), h('div', { class: 'muted small' }, 'Area-level estimate for 3 to 9 am. Valleys and water can differ from this grid point.')),
+      fw ? h('button', { type: 'button', class: 'pill small', onclick: () => { S.profileId = 'fog'; store.set('profile', 'fog'); S.sel = { kind: 'window', day: S.day, rank: fw.rank }; render(); } }, bandChip(fw.band, Math.round(fw.score) + ' ' + BAND_LABEL[fw.band]), ' ' + winLabel(fw)) : h('span', { class: 'muted' }, 'none')));
+  }
+  function zonedNoon() { return C.zonedMidnight(S.day, tz()) + 12 * HOUR; }
+
+  /* ---------- raw table ---------- */
+
+  function renderRaw() {
+    const el = clear($('#raw'));
+    el.appendChild(h('summary', null, 'Raw hourly data for ' + (S.day || '') + ' (cross-check against any weather app)'));
+    if (!S.day) return;
+    const f = fmt();
+    const secondBy = new Map((S.second || []).map((r) => [r.ms, r]));
+    const rows = S.hours.filter((r) => C.localParts(r.ms, tz()).date === S.day);
+    const sc = new Map((S.scores[S.profileId] || []).map((x) => [x.ms, x]));
+    const cols = ['Time', 'Temp', 'Dew', 'NWS dew', 'RH', 'Wind', 'Cloud L/M/H', 'Vis', 'PM2.5', 'AOD', 'Rain', profile().name];
+    const table = h('table', { class: 'raw' },
+      h('thead', null, h('tr', null, cols.map((c) => h('th', { scope: 'col' }, c)))),
+      h('tbody', null, rows.map((r) => {
+        const x = sc.get(r.ms), n = secondBy.get(r.ms);
+        return h('tr', { class: r.ms < S.nowMs ? 'past' : '' },
+          h('th', { scope: 'row' }, F.hourLabel(r.ms, tz())), h('td', null, f.temp(r.tempC)), h('td', null, f.temp(r.dewC)), h('td', null, n && isNum(n.dewC) ? f.temp(n.dewC) : '–'),
+          h('td', null, f.pct(r.rh)), h('td', null, f.speed(r.windMs) + (isNum(r.windDirDeg) ? ' ' + C.compass(r.windDirDeg) : '')),
+          h('td', null, [r.cloudLow, r.cloudMid, r.cloudHigh].map((v) => (isNum(v) ? Math.round(v) : '–')).join('/')),
+          h('td', null, isNum(r.visM) ? f.dist(r.visM) : '–'), h('td', null, isNum(r.pm25) ? r.pm25.toFixed(0) : '–'), h('td', null, isNum(r.aod) ? r.aod.toFixed(2) : '–'),
+          h('td', null, r.precipMm > 0 ? f.precip(r.precipMm) : '–'),
+          h('td', { class: x && x.scored ? 'sc band-' + x.band : '' }, x && x.scored ? String(Math.round(x.score)) : '–'));
+      })));
+    el.appendChild(h('div', { class: 'tablewrap', tabindex: '0', role: 'region', 'aria-label': 'Raw hourly table' }, table));
+  }
+
+  /* ---------- shot log ---------- */
+
+  function renderLog() {
+    const el = clear($('#logsec'));
+    el.appendChild(h('summary', null, 'Shot log: teach the model what clear means for you (' + S.log.length + ' entries)'));
+    const today = C.localParts(Date.now(), tz()).date;
+    const date = h('input', { type: 'date', id: 'lg-date', value: today, max: today, 'aria-label': 'Date shot' });
+    const h0 = h('select', { id: 'lg-h0', 'aria-label': 'Start hour' }, hourOptions(7));
+    const h1 = h('select', { id: 'lg-h1', 'aria-label': 'End hour' }, hourOptions(10));
+    const pf = h('select', { id: 'lg-pf', 'aria-label': 'Shoot type' }, C.PROFILES.map((p) => h('option', { value: p.id, selected: p.id === S.profileId }, p.name)));
+    const rate = h('select', { id: 'lg-r', 'aria-label': 'Clarity rating of the keepers' }, [5, 4, 3, 2, 1].map((n) => h('option', { value: n }, n + (n === 5 ? ' (crisp)' : n === 1 ? ' (hazy)' : ''))));
+    el.appendChild(h('p', { class: 'muted' }, 'After a shoot, log where and when and how clear the keepers were at 100%. With enough entries the app compares your ratings with its scores and shows which factors matter for you. Each outing is scored from the archived Open-Meteo forecast for that day (without the previous-day trend or climate history). Entries stay on this device.'));
+    el.appendChild(h('form', { class: 'logform', onsubmit: (e) => { e.preventDefault(); addLog({ date: date.value, h0: +h0.value, h1: +h1.value, profile: pf.value, rating: +rate.value }); } },
+      h('label', null, 'Date', date), h('label', null, 'From', h0), h('label', null, 'To', h1), h('label', null, 'Shoot type', pf), h('label', null, 'Rating', rate),
+      h('button', { type: 'submit', class: 'btn primary' }, 'Add to log for ' + S.place.name)));
+    if (S.log.length) {
+      el.appendChild(h('div', { class: 'logs' }, S.log.map((e) => {
+        const r = S.logResults[e.id];
+        return h('div', { class: 'logrow' },
+          h('div', null, h('strong', null, e.date + ' ' + F.hourLabel(Date.UTC(2000, 0, 1, e.h0), 'UTC') + '–' + F.hourLabel(Date.UTC(2000, 0, 1, e.h1 + 1), 'UTC')), h('div', { class: 'muted small' }, e.place + ' · ' + C.PROFILE_BY_ID[e.profile].name)),
+          h('div', null, 'Rated ' + e.rating + '/5'), h('div', { class: r && r.error ? 'muted small' : '' }, r && r.score != null ? 'Model: ' + Math.round(r.score) + ' ' + BAND_LABEL[C.bandOf(r.score)] : r && r.error ? r.error : '–'),
+          h('button', { type: 'button', class: 'pill small', 'aria-label': 'Delete entry', onclick: () => { S.log = S.log.filter((x) => x.id !== e.id); store.set('log', S.log); renderLog(); $('#logsec').open = true; } }, 'Delete'));
+      })));
+      el.appendChild(h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn', id: 'lg-an', onclick: analyzeLog }, 'Compare my ratings with the model'), h('span', { id: 'lg-status', class: 'muted', 'aria-live': 'polite' })));
+      el.appendChild(h('div', { id: 'lg-out' }));
+      renderLogAnalysis();
+    }
+  }
+  const hourOptions = (sel) => Array.from({ length: 24 }, (_, i) => h('option', { value: i, selected: i === sel }, h12s(i)));
+
+  function addLog(v) {
+    if (!v.date || v.h1 < v.h0) { $('#lg-status') && ($('#lg-status').textContent = 'End hour must be after the start hour.'); return; }
+    const p = S.place;
+    S.log.unshift({ id: Date.now().toString(36), date: v.date, h0: v.h0, h1: v.h1, profile: v.profile, rating: v.rating, place: p.name, lat: p.lat, lon: p.lon, tz: p.tz, elevM: p.elevM });
+    store.set('log', S.log);
+    renderLog();
+    $('#logsec').open = true;
+  }
+
+  // Scores each logged outing as the app would have seen it, from Open-Meteo's archived forecast for that day.
+  async function analyzeLog() {
+    const status = $('#lg-status'), btn = $('#lg-an');
+    btn.disabled = true; status.textContent = 'Fetching weather for each outing…';
+    let done = 0;
+    for (const e of S.log) {
+      if (S.logResults[e.id] && S.logResults[e.id].score != null) { done++; continue; }
+      try {
+        const place = { lat: e.lat, lon: e.lon, tz: e.tz, elevM: e.elevM, name: e.place };
+        const past = await P.fetchPast(place, e.date);
+        const hours = C.mergeHourly(past.weather, past.air);
+        const ctx = { place, hours, nowMs: hours[0].ms, climo: null, second: null };
+        const prior = S.windPrior === 'auto' ? C.windPriorFor(place) : S.windPrior;
+        const sc = C.score(ctx, C.PROFILE_BY_ID[e.profile], { windPrior: prior });
+        const inRange = sc.filter((x) => { const lp = C.localParts(x.ms, e.tz); return lp.date === e.date && lp.hour >= e.h0 && lp.hour <= e.h1 && x.scored; });
+        const agg = C.aggregate(inRange);
+        const pf = C.PROFILE_BY_ID[e.profile];
+        const when = pf.id === 'golden' ? 'near sunrise and sunset' : pf.id === 'fog' ? 'from 3 to 9 am' : 'in daylight';
+        S.logResults[e.id] = agg ? { score: agg.score, factors: Object.fromEntries(agg.factors.map((f) => [f.id, f.score])) } : { error: pf.name + ' only scores hours ' + when + ', and none fall in that range.' };
+      } catch (err) { S.logResults[e.id] = { error: err.message || 'failed' }; }
+      done++; status.textContent = 'Scored ' + done + ' of ' + S.log.length + '…';
+    }
+    store.set('logResults', S.logResults);
+    btn.disabled = false; status.textContent = '';
+    renderLog(); $('#logsec').open = true;
+  }
+
+  function renderLogAnalysis() {
+    const out = $('#lg-out');
+    if (!out) return;
+    const done = S.log.filter((e) => S.logResults[e.id] && S.logResults[e.id].score != null);
+    if (!done.length) return;
+    const ratings = done.map((e) => e.rating), preds = done.map((e) => S.logResults[e.id].score);
+    const r = C.spearman(preds, ratings);
+    out.appendChild(h('p', null, done.length + ' scored outing' + (done.length === 1 ? '' : 's') + '. ' +
+      (r == null ? 'Add varied ratings to see how well the model tracks them.' : 'Rank correlation between model score and your rating: ' + r.toFixed(2) + (done.length < 8 ? ' (too few entries to trust yet).' : r >= 0.6 ? ' (the model tracks your eye well).' : r >= 0.3 ? ' (partly tracks your eye).' : ' (weak: your keepers follow something else).'))));
+    if (done.length >= 8) {
+      const ids = C.FACTOR_IDS.filter((id) => done.filter((e) => S.logResults[e.id].factors[id] != null).length >= 8);
+      const rows = ids.map((id) => {
+        const sub = done.filter((e) => S.logResults[e.id].factors[id] != null);
+        return { id, r: C.spearman(sub.map((e) => S.logResults[e.id].factors[id]), sub.map((e) => e.rating)), n: sub.length };
+      }).filter((x) => x.r != null).sort((a, b) => b.r - a.r);
+      if (rows.length) out.appendChild(h('div', { class: 'ftable' }, rows.map((x) => h('div', { class: 'frow' }, h('div', { class: 'fname' }, C.FACTOR_LABELS[x.id], h('small', null, x.n + ' outings')), h('div', { class: 'fbar' }, h('i', { class: 'fill', style: { width: Math.round(Math.abs(x.r) * 100) + '%', opacity: x.r < 0 ? 0.35 : 1 } })), h('div', { class: 'fval' }, (x.r >= 0 ? '+' : '−') + Math.abs(x.r).toFixed(2))))));
+    }
+    out.appendChild(h('p', { class: 'muted small' }, done.length < 30 ? 'Weight refitting needs at least 30 labeled outings (' + done.length + ' so far), so the default weights stay in use.' : 'You have 30+ outings; automatic weight refitting is planned but not built yet.'));
+  }
+
+  /* ---------- wiring ---------- */
+
+  function init() {
+    $('#form').addEventListener('submit', (e) => { e.preventDefault(); const v = $('#q').value.trim(); if (v) load(v); });
+    $('#locate').addEventListener('click', () => {
+      if (!navigator.geolocation) { S.notes = [{ kind: 'warn', text: 'This browser cannot share your location. Enter a zip code instead.' }]; renderBanner(); return; }
+      $('#locate').disabled = true;
+      navigator.geolocation.getCurrentPosition(
+        (pos) => { $('#locate').disabled = false; const v = pos.coords.latitude.toFixed(3) + ', ' + pos.coords.longitude.toFixed(3); $('#q').value = v; load(v); },
+        () => { $('#locate').disabled = false; S.notes = [{ kind: 'warn', text: 'Location is blocked or unavailable. Enter a zip code instead.' }]; renderBanner(); },
+        { timeout: 10000, maximumAge: 600000 });
+    });
+    for (const b of document.querySelectorAll('[data-units]')) b.addEventListener('click', () => { S.units = b.dataset.units; store.set('units', S.units); if (S.hours) { render(); } else render(); });
+    const wp = $('#windprior');
+    if (wp) { wp.value = S.windPrior; wp.addEventListener('change', () => { S.windPrior = wp.value; store.set('windPrior', S.windPrior); if (S.hours) { recompute(); pickDay(false); render(); } }); }
+    window.addEventListener('online', () => { if (S.error && S.error.input) load(S.error.input); });
+    if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) navigator.serviceWorker.register('./sw.js').catch(() => {});
+    const fromHash = decodeURIComponent((location.hash || '').slice(1));
+    const start = fromHash || store.get('last', '');
+    if (start) { $('#q').value = start; load(start); } else render();
+  }
+
+  window.ClearSkyApp = { S, load, recompute, render };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+
+</script>
+</body>
+</html>

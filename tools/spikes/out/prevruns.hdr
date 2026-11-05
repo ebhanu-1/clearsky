@@ -1,0 +1,16 @@
+HTTP/1.1 200 OK
+Date: Wed, 04 Nov 2026 16:13:44 GMT
+Content-Type: application/json; charset=utf-8
+Transfer-Encoding: chunked
+Connection: keep-alive
+X-RateLimit-Cost: 1.0
+X-RateLimit-Limit: 600.0
+X-RateLimit-Remaining: 598.0
+X-RateLimit-Reset: 1793808883
+X-RateLimit-Window: 60
+access-control-allow-origin: *
+access-control-allow-headers: accept, authorization, content-type, origin, x-requested-with, user-agent, access-control-allow-origin, range, if-match, if-unmodified-since
+access-control-allow-methods: GET, POST, OPTIONS
+access-control-expose-headers: x-ratelimit-cost, x-ratelimit-limit, x-ratelimit-remaining, x-ratelimit-reset, x-ratelimit-window, retry-after
+access-control-max-age: 600
+
