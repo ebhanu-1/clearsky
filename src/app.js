@@ -37,7 +37,7 @@
   /* ---------- state ---------- */
 
   const S = {
-    units: store.get('units', 'us'),
+    units: 'us', // US units only (°F, mph, in, mi)
     profileId: store.get('profile', 'clarity'),
     windPrior: store.get('windPrior', 'auto'),
     input: '', place: null, hours: null, hourByMs: new Map(), climo: null, second: null, nowMs: 0,
@@ -217,7 +217,6 @@
   function render() {
     renderChips(); renderBanner();
     const app = clear($('#app'));
-    for (const b of document.querySelectorAll('[data-units]')) b.setAttribute('aria-pressed', String(b.dataset.units === S.units));
     if (S.error) { app.appendChild(errorCard()); return; }
     if (S.loading && !S.hours) { app.appendChild(skeleton()); return; }
     if (!S.hours) { app.appendChild(welcome()); return; }
@@ -740,14 +739,47 @@
         () => { $('#locate').disabled = false; S.notes = [{ kind: 'warn', text: 'Location is blocked or unavailable. Enter a zip code instead.' }]; renderBanner(); },
         { timeout: 10000, maximumAge: 600000 });
     });
-    for (const b of document.querySelectorAll('[data-units]')) b.addEventListener('click', () => { S.units = b.dataset.units; store.set('units', S.units); if (S.hours) { render(); } else render(); });
     const wp = $('#windprior');
     if (wp) { wp.value = S.windPrior; wp.addEventListener('change', () => { S.windPrior = wp.value; store.set('windPrior', S.windPrior); if (S.hours) { recompute(); pickDay(false); render(); } }); }
     window.addEventListener('online', () => { if (S.error && S.error.input) load(S.error.input); });
-    if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) navigator.serviceWorker.register('./sw.js').catch(() => {});
+    registerSW();
+    setTimeout(() => checkForUpdate(true), 1500);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkForUpdate(true); });
+    const verEl = $('#ver'); if (verEl) { verEl.setAttribute('role', 'button'); verEl.tabIndex = 0; verEl.addEventListener('click', () => checkForUpdate(false, true)); }
     const fromHash = decodeURIComponent((location.hash || '').slice(1));
     const start = fromHash || store.get('last', '');
     if (start) { $('#q').value = start; load(start); } else render();
+  }
+
+
+  /* ---------- versioning, self-update, offline launch ----------
+     Same protocol as Studio Phone: the service worker serves the cached page first; the live-version probe (?u=)
+     and the update load (?v=) always go to the network. Every build bumps VERSION (build.mjs). */
+  const APP_VERSION = '__APP_VERSION__';
+  async function checkForUpdate(auto, manual) {
+    const bar = $('#updatebar');
+    const say = (t) => { if (!bar) return; clear(bar); if (t) bar.appendChild(h('div', { class: 'banner info', role: 'status' }, t)); };
+    try {
+      if (!/^https?:$/.test(location.protocol)) return;
+      const r = await fetch(location.pathname + '?u=' + Date.now(), { cache: 'no-store' });
+      if (!r.ok) return;
+      const m = (await r.text()).match(/const APP_VERSION = 'v([\d.]+)'/);
+      if (!m) return;
+      const live = m[1], mine = (APP_VERSION.match(/^v([\d.]+)$/) || [])[1];
+      if (!live || live === mine) { if (manual) { say('You have the latest version (v' + mine + ').'); setTimeout(() => say(''), 3000); } return; }
+      const go = () => location.replace(location.pathname + '?v=' + live + location.hash);
+      if (auto && !S.hours && !S.loading) { go(); return; }   // nothing on screen to lose: update at once
+      clear(bar);
+      bar.appendChild(h('div', { class: 'banner info update', role: 'status' }, 'ClearSky v' + live + ' is available. ',
+        h('button', { type: 'button', class: 'upd', onclick: go }, 'Update now')));
+    } catch (e) { if (manual) { say('Could not check. Are you online?'); setTimeout(() => say(''), 3000); } }
+  }
+  function registerSW() {
+    try {
+      if (!('serviceWorker' in navigator)) return;
+      if (!(location.protocol === 'https:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) return;
+      navigator.serviceWorker.register('sw.js?p=' + encodeURIComponent(location.pathname), { scope: location.pathname }).catch(() => {});
+    } catch (e) { /* offline launch is optional */ }
   }
 
   window.ClearSkyApp = { S, load, recompute, render };

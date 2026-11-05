@@ -25,10 +25,7 @@
       <svg width="34" height="34" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#173f77"/><circle cx="32" cy="38" r="12" fill="#f6c453"/><path d="M8 44h48" stroke="#fff" stroke-width="3" stroke-linecap="round"/><path d="M14 52h36" stroke="#8db4dc" stroke-width="3" stroke-linecap="round"/></svg>
       <div><h1>ClearSky</h1><p class="tag">Pick the day and hour before you drive.</p></div>
     </div>
-    <div class="seg" role="group" aria-label="Units">
-      <button type="button" data-units="us" aria-pressed="true">°F · mph</button>
-      <button type="button" data-units="si" aria-pressed="false">°C · km/h</button>
-    </div>
+    <span class="ver" id="ver" title="version · build time">__VERSION__</span>
   </header>
 
   <form id="form" class="search" autocomplete="off" role="search">
@@ -38,6 +35,7 @@
     <button type="button" id="locate" class="icon" aria-label="Use my location" title="Use my location">&#9678;</button>
   </form>
   <div id="chips" class="chips" hidden></div>
+  <div id="updatebar" aria-live="polite"></div>
   <div id="banner" aria-live="polite"></div>
 
   <main id="app"></main>

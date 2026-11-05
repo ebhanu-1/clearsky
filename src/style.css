@@ -36,6 +36,7 @@ button:disabled { opacity: .55; cursor: default; }
 .brand svg { flex: none; }
 .brand h1 { font-size: 1.35rem; letter-spacing: -.01em; }
 .tag { margin: 0; color: var(--muted); font-size: .85rem; }
+.ver { flex: none; font-size: .8rem; color: var(--muted, #667); font-variant-numeric: tabular-nums; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; flex: none; }
 .seg button { border: 0; background: transparent; padding: 9px 11px; min-height: 40px; font-size: .85rem; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
@@ -194,3 +195,7 @@ footer a { color: var(--accent); }
   .hero-main { flex-direction: column; } .hero-score { flex-direction: row; gap: 10px; min-height: 64px; justify-content: flex-start; padding: 8px 14px; } .hero-score .num { font-size: 2.2rem; }
   .when { font-size: 1.15rem; } .brand h1 { font-size: 1.2rem; } .tag { display: none; }
 }
+
+.ver { cursor: pointer; }
+.update { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.upd { border: 0; background: var(--accent); color: #fff; border-radius: 8px; padding: 6px 12px; font-weight: 700; min-height: 36px; }

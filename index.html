@@ -53,6 +53,7 @@ button:disabled { opacity: .55; cursor: default; }
 .brand svg { flex: none; }
 .brand h1 { font-size: 1.35rem; letter-spacing: -.01em; }
 .tag { margin: 0; color: var(--muted); font-size: .85rem; }
+.ver { flex: none; font-size: .8rem; color: var(--muted, #667); font-variant-numeric: tabular-nums; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; flex: none; }
 .seg button { border: 0; background: transparent; padding: 9px 11px; min-height: 40px; font-size: .85rem; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
@@ -212,6 +213,10 @@ footer a { color: var(--accent); }
   .when { font-size: 1.15rem; } .brand h1 { font-size: 1.2rem; } .tag { display: none; }
 }
 
+.ver { cursor: pointer; }
+.update { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.upd { border: 0; background: var(--accent); color: #fff; border-radius: 8px; padding: 6px 12px; font-weight: 700; min-height: 36px; }
+
 </style>
 </head>
 <body>
@@ -221,10 +226,7 @@ footer a { color: var(--accent); }
       <svg width="34" height="34" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#173f77"/><circle cx="32" cy="38" r="12" fill="#f6c453"/><path d="M8 44h48" stroke="#fff" stroke-width="3" stroke-linecap="round"/><path d="M14 52h36" stroke="#8db4dc" stroke-width="3" stroke-linecap="round"/></svg>
       <div><h1>ClearSky</h1><p class="tag">Pick the day and hour before you drive.</p></div>
     </div>
-    <div class="seg" role="group" aria-label="Units">
-      <button type="button" data-units="us" aria-pressed="true">°F · mph</button>
-      <button type="button" data-units="si" aria-pressed="false">°C · km/h</button>
-    </div>
+    <span class="ver" id="ver" title="version 1.0 · built 2026-11-05 16:35 UTC">v1.0</span>
   </header>
 
   <form id="form" class="search" autocomplete="off" role="search">
@@ -234,6 +236,7 @@ footer a { color: var(--accent); }
     <button type="button" id="locate" class="icon" aria-label="Use my location" title="Use my location">&#9678;</button>
   </form>
   <div id="chips" class="chips" hidden></div>
+  <div id="updatebar" aria-live="polite"></div>
   <div id="banner" aria-live="polite"></div>
 
   <main id="app"></main>
@@ -1490,7 +1493,7 @@ footer a { color: var(--accent); }
   /* ---------- state ---------- */
 
   const S = {
-    units: store.get('units', 'us'),
+    units: 'us', // US units only (°F, mph, in, mi)
     profileId: store.get('profile', 'clarity'),
     windPrior: store.get('windPrior', 'auto'),
     input: '', place: null, hours: null, hourByMs: new Map(), climo: null, second: null, nowMs: 0,
@@ -1670,7 +1673,6 @@ footer a { color: var(--accent); }
   function render() {
     renderChips(); renderBanner();
     const app = clear($('#app'));
-    for (const b of document.querySelectorAll('[data-units]')) b.setAttribute('aria-pressed', String(b.dataset.units === S.units));
     if (S.error) { app.appendChild(errorCard()); return; }
     if (S.loading && !S.hours) { app.appendChild(skeleton()); return; }
     if (!S.hours) { app.appendChild(welcome()); return; }
@@ -2193,14 +2195,47 @@ footer a { color: var(--accent); }
         () => { $('#locate').disabled = false; S.notes = [{ kind: 'warn', text: 'Location is blocked or unavailable. Enter a zip code instead.' }]; renderBanner(); },
         { timeout: 10000, maximumAge: 600000 });
     });
-    for (const b of document.querySelectorAll('[data-units]')) b.addEventListener('click', () => { S.units = b.dataset.units; store.set('units', S.units); if (S.hours) { render(); } else render(); });
     const wp = $('#windprior');
     if (wp) { wp.value = S.windPrior; wp.addEventListener('change', () => { S.windPrior = wp.value; store.set('windPrior', S.windPrior); if (S.hours) { recompute(); pickDay(false); render(); } }); }
     window.addEventListener('online', () => { if (S.error && S.error.input) load(S.error.input); });
-    if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) navigator.serviceWorker.register('./sw.js').catch(() => {});
+    registerSW();
+    setTimeout(() => checkForUpdate(true), 1500);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkForUpdate(true); });
+    const verEl = $('#ver'); if (verEl) { verEl.setAttribute('role', 'button'); verEl.tabIndex = 0; verEl.addEventListener('click', () => checkForUpdate(false, true)); }
     const fromHash = decodeURIComponent((location.hash || '').slice(1));
     const start = fromHash || store.get('last', '');
     if (start) { $('#q').value = start; load(start); } else render();
+  }
+
+
+  /* ---------- versioning, self-update, offline launch ----------
+     Same protocol as Studio Phone: the service worker serves the cached page first; the live-version probe (?u=)
+     and the update load (?v=) always go to the network. Every build bumps VERSION (build.mjs). */
+  const APP_VERSION = 'v1.0';
+  async function checkForUpdate(auto, manual) {
+    const bar = $('#updatebar');
+    const say = (t) => { if (!bar) return; clear(bar); if (t) bar.appendChild(h('div', { class: 'banner info', role: 'status' }, t)); };
+    try {
+      if (!/^https?:$/.test(location.protocol)) return;
+      const r = await fetch(location.pathname + '?u=' + Date.now(), { cache: 'no-store' });
+      if (!r.ok) return;
+      const m = (await r.text()).match(/const APP_VERSION = 'v([\d.]+)'/);
+      if (!m) return;
+      const live = m[1], mine = (APP_VERSION.match(/^v([\d.]+)$/) || [])[1];
+      if (!live || live === mine) { if (manual) { say('You have the latest version (v' + mine + ').'); setTimeout(() => say(''), 3000); } return; }
+      const go = () => location.replace(location.pathname + '?v=' + live + location.hash);
+      if (auto && !S.hours && !S.loading) { go(); return; }   // nothing on screen to lose: update at once
+      clear(bar);
+      bar.appendChild(h('div', { class: 'banner info update', role: 'status' }, 'ClearSky v' + live + ' is available. ',
+        h('button', { type: 'button', class: 'upd', onclick: go }, 'Update now')));
+    } catch (e) { if (manual) { say('Could not check. Are you online?'); setTimeout(() => say(''), 3000); } }
+  }
+  function registerSW() {
+    try {
+      if (!('serviceWorker' in navigator)) return;
+      if (!(location.protocol === 'https:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) return;
+      navigator.serviceWorker.register('sw.js?p=' + encodeURIComponent(location.pathname), { scope: location.pathname }).catch(() => {});
+    } catch (e) { /* offline launch is optional */ }
   }
 
   window.ClearSkyApp = { S, load, recompute, render };
