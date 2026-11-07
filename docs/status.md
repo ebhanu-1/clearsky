@@ -1,11 +1,11 @@
 # ClearSky status
 
-Last updated 2026-11-05. Read this first when picking the project up in a new chat, then CLAUDE.md.
+Last updated 2026-11-07. Read this first when picking the project up in a new chat, then CLAUDE.md.
 
 ## Where it stands
 
-- **Released: v2.0**, commit 525a51e on main, live at https://ebhanu-1.github.io/clearsky/ (GitHub Pages, repo ebhanu-1/clearsky).
-- Working tree clean after the release. 38 tests pass (`npm test`), `npm run live` scores all four zips with no gaps,
+- **Released: v2.1** (NWS is now the primary weather source, see docs/spikes.md "v2.1"); v2.0 was commit 525a51e, live at https://ebhanu-1.github.io/clearsky/ (GitHub Pages, repo ebhanu-1/clearsky).
+- Working tree clean after the release. 46 tests pass (`npm test`), `npm run live` scores all four zips with no gaps,
   size 172.5 KB (50.7 KB gzipped, budget 200 KB gzipped).
 - Product focus: **clarity for distant landscape shots** (sharp, clean, no haze, smoke or shimmer). Moon, aurora and the
   other five profiles are small extras and stay out of Clarity scores. See docs/v2.md for the assessment and V1-V13.
@@ -19,6 +19,8 @@ mobile-first tabs (Plan, Day, Layers, More).
 
 ## Not verified
 
+- v2.1: that NWS data predicts real clarity better than Open-Meteo did (needs rated shots); the NWS/Open-Meteo seam in the
+  24-hour post-front signal; NWS rate limits under heavy use (none seen in testing).
 - On a real phone: the "Update now" flow from 1.1 to 2.0, Add to Home Screen, offline launch.
 - Clarity weights (V5) are starting values, not tuned against real shots.
 - Line of sight is two weather points, not terrain.

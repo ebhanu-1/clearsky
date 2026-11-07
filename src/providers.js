@@ -128,14 +128,23 @@
     } catch (e) { return { name: null, state: '' }; }
   }
 
-  // Time zone id (and elevation) for a coordinate, via a tiny Open-Meteo call.
+  // Time zone id and elevation for a coordinate. The NWS point lookup knows both for US locations and the same
+  // calls feed the forecast, so they are cached for it; Open-Meteo answers for anything the NWS does not cover.
   async function resolveTimezone(lat, lon) {
     const key = 'tz:' + lat.toFixed(2) + ',' + lon.toFixed(2);
     const hit = cache.get(key, null);
     if (hit) return hit.v;
-    const j = await http('https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon + '&daily=sunrise&forecast_days=1&timezone=auto', { retries: 1 });
-    if (!j || !j.timezone) throw new ProviderError('shape', 'No time zone in response');
-    const v = { tz: j.timezone, elevM: isNum(j.elevation) ? j.elevation : 0 };
+    let v = null;
+    try {
+      const g = await fetchNwsGrid({ lat, lon });
+      const e = g.json && g.json.properties && g.json.properties.elevation;
+      if (g.tz) v = { tz: g.tz, elevM: e && isNum(e.value) ? (/ft/.test(String(e.unitCode)) ? e.value * 0.3048 : e.value) : 0 };
+    } catch (err) { /* outside NWS coverage or unreachable: ask Open-Meteo */ }
+    if (!v) {
+      const j = await http('https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon + '&daily=sunrise&forecast_days=1&timezone=auto', { retries: 1 });
+      if (!j || !j.timezone) throw new ProviderError('shape', 'No time zone in response');
+      v = { tz: j.timezone, elevM: isNum(j.elevation) ? j.elevation : 0 };
+    }
     cache.set(key, v);
     return v;
   }
@@ -242,15 +251,18 @@
     if (!m) return 3600000;
     return ((+m[1] || 0) * 86400 + (+m[2] || 0) * 3600 + (+m[3] || 0) * 60) * 1000;
   }
-  function expandLayer(layer) {
+  // Expands a grid layer to one value per hour. spread=true divides each interval's value across its hours
+  // (accumulations such as precipitation); otherwise the value repeats (instantaneous readings).
+  function expandLayer(layer, spread) {
     const out = new Map();
     if (!layer || !Array.isArray(layer.values)) return out;
     for (const v of layer.values) {
       if (!isNum(v.value)) continue;
       const [start, dur] = String(v.validTime).split('/');
       const s = Date.parse(start);
-      const n = Math.min(Math.max(1, Math.round(durationMs(dur) / 3600000)), 24 * 7);
-      for (let i = 0; i < n; i++) out.set(s + i * 3600000, v.value);
+      if (!Number.isFinite(s)) continue;
+      const n = Math.min(Math.max(1, Math.round(durationMs(dur) / 3600000)), 24 * 8);
+      for (let i = 0; i < n; i++) out.set(s + i * 3600000, spread ? v.value / n : v.value);
     }
     return out;
   }
@@ -266,19 +278,73 @@
     }));
   }
 
+  // Unit conversion by the layer's own unit code, so a change of units upstream cannot silently skew a factor.
+  function layerSi(layer, kind) {
+    const u = String((layer && layer.uom) || '');
+    const k = {
+      temp: () => (/degF/.test(u) ? (v) => ((v - 32) * 5) / 9 : (v) => v),
+      speed: () => (/km_h/.test(u) ? (v) => v / 3.6 : /mi_h/.test(u) ? (v) => v * 0.44704 : /kt|knot/.test(u) ? (v) => v * 0.514444 : (v) => v),
+      length: () => (/:ft|foot/.test(u) ? (v) => v * 0.3048 : /:km/.test(u) ? (v) => v * 1000 : (v) => v),
+    }[kind];
+    return k ? k() : (v) => v;
+  }
+  const convertMap = (m, fn) => { for (const [k, v] of m) m.set(k, fn(v)); return m; };
+
+  // The full NWS grid as hourly records in the same shape as normalizeForecast. Fields the grid does not carry
+  // (cloud layers, pressure) stay null; core.mergePrimary fills them from the second source.
+  function normalizeNwsHourly(j) {
+    const p = j && j.properties;
+    if (!p) throw new ProviderError('shape', 'NWS grid response has no properties');
+    const L = {
+      temp: convertMap(expandLayer(p.temperature), layerSi(p.temperature, 'temp')),
+      dew: convertMap(expandLayer(p.dewpoint), layerSi(p.dewpoint, 'temp')),
+      rh: expandLayer(p.relativeHumidity), sky: expandLayer(p.skyCover), dir: expandLayer(p.windDirection),
+      wind: convertMap(expandLayer(p.windSpeed), layerSi(p.windSpeed, 'speed')),
+      gust: convertMap(expandLayer(p.windGust), layerSi(p.windGust, 'speed')),
+      vis: convertMap(expandLayer(p.visibility), layerSi(p.visibility, 'length')),
+      pbl: convertMap(expandLayer(p.mixingHeight), layerSi(p.mixingHeight, 'length')),
+      qpf: expandLayer(p.quantitativePrecipitation, true), // millimetres, spread over each interval's hours
+    };
+    const keys = [...new Set([...L.dew.keys(), ...L.temp.keys(), ...L.sky.keys()])].sort((a, b) => a - b);
+    if (!keys.length) throw new ProviderError('shape', 'NWS grid has no temperature, dew point or sky cover');
+    const g = (m, ms) => (m.has(ms) ? m.get(ms) : null);
+    return keys.map((ms) => ({
+      t: new Date(ms).toISOString(), ms,
+      tempC: g(L.temp, ms), dewC: g(L.dew, ms), rh: g(L.rh, ms),
+      windMs: g(L.wind, ms), gustMs: g(L.gust, ms), windDirDeg: g(L.dir, ms),
+      cloudTotal: g(L.sky, ms), cloudLow: null, cloudMid: null, cloudHigh: null,
+      visM: g(L.vis, ms), precipMm: g(L.qpf, ms), pressHpa: null, pblM: g(L.pbl, ms),
+      isDay: null, pm25: null, pm10: null, aod: null, dust: null, aqiUs: null,
+      src: { weather: 'nws', air: null },
+    }));
+  }
+
   // US only. Browsers refuse to set a custom User-Agent, and setting one would force a CORS preflight,
   // so the browser's own UA identifies the request. Node callers may pass opts.headers.
-  async function fetchSecondOpinion(place, opts) {
+  async function fetchNwsGrid(place, opts) {
     const headers = (opts && opts.headers) || undefined;
-    const kp = 'nws:grid:' + ckey(place);
-    let gridUrl = (cache.get(kp, 24 * 3600000) || {}).v;
-    if (!gridUrl) {
-      const pts = await http('https://api.weather.gov/points/' + place.lat.toFixed(4) + ',' + place.lon.toFixed(4), { retries: 1, headers });
-      gridUrl = pts && pts.properties && pts.properties.forecastGridData;
+    const kp = 'nws:pt:' + ckey(place);
+    let pt = (cache.get(kp, 24 * 3600000) || {}).v;
+    if (!pt) {
+      const j = await http('https://api.weather.gov/points/' + place.lat.toFixed(4) + ',' + place.lon.toFixed(4), { retries: 1, headers });
+      const gridUrl = j && j.properties && j.properties.forecastGridData;
       if (!gridUrl) throw new ProviderError('shape', 'NWS /points gave no forecastGridData');
-      cache.set(kp, gridUrl);
+      pt = { grid: gridUrl, tz: j.properties.timeZone || null };
+      cache.set(kp, pt);
     }
-    const res = await cachedJson('nws:' + ckey(place), 60 * 60000, gridUrl, { retries: 1, timeoutMs: 10000, headers });
+    const res = await cachedJson('nws:' + ckey(place), 60 * 60000, pt.grid, { retries: 1, timeoutMs: 10000, headers });
+    return Object.assign({ tz: pt.tz }, res);
+  }
+
+  // Primary weather: the NWS forecast grid (forecaster-edited NBM). Throws when the point is outside NWS coverage.
+  async function fetchNwsHourly(place, opts) {
+    const res = await fetchNwsGrid(place, opts);
+    return { records: normalizeNwsHourly(res.json), at: res.at, fromCache: res.fromCache, stale: !!res.stale, error: res.error || null };
+  }
+
+  // Dew point, sky cover and visibility only; kept for callers that want the lightweight series.
+  async function fetchSecondOpinion(place, opts) {
+    const res = await fetchNwsGrid(place, opts);
     return { records: normalizeNwsGrid(res.json), at: res.at, fromCache: res.fromCache };
   }
 
@@ -368,7 +434,7 @@
   return {
     pathPoints, fetchPath, reduceEnsemble, fetchEnsemble, fetchKp,
     ProviderError, cache, http, zipOk, parseLatLon, geocodeZip, reverseName, resolveTimezone, resolvePlace,
-    normalizeForecast, normalizeAir, normalizeNwsGrid, durationMs, expandLayer,
-    fetchForecast, fetchAirQuality, fetchClimateSeries, fetchSecondOpinion, fetchPast, FORECAST_VARS, AIR_VARS,
+    normalizeForecast, normalizeAir, normalizeNwsGrid, normalizeNwsHourly, durationMs, expandLayer,
+    fetchForecast, fetchAirQuality, fetchClimateSeries, fetchSecondOpinion, fetchNwsHourly, fetchPast, FORECAST_VARS, AIR_VARS,
   };
 });

@@ -9,8 +9,9 @@ reminder for the best window. Five other shoot types (**Golden light**, **Fog an
 **Soft light**, **Wildlife**) are one tap away. Every score comes with the reasons behind it and a confidence level.
 See docs/v2.md for the assessment and design decisions.
 
-No accounts, no API keys. Data comes straight from the browser to Open-Meteo (forecast, air quality, ERA5 history),
-the National Weather Service (cross-check), Zippopotam.us and OpenStreetMap Nominatim (places).
+No accounts, no API keys. Data comes straight from the browser to the National Weather Service (the forecast: temperature,
+dew point, humidity, wind, cloud cover, visibility, rain), Open-Meteo (cloud layers, air quality, forecast ensemble, ERA5
+history and a second-source cross-check), NOAA SWPC (Kp), Zippopotam.us and OpenStreetMap Nominatim (places).
 
 ## Use it
 
@@ -23,7 +24,7 @@ the National Weather Service (cross-check), Zippopotam.us and OpenStreetMap Nomi
 ## Develop
 
 ```bash
-npm test          # 38 tests, no network
+npm test          # 46 tests, no network
 npm run build     # writes index.html
 npm run live      # hits the real APIs for four zips
 ```

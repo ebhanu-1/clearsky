@@ -387,6 +387,24 @@
     });
   }
 
+  // NWS is the primary weather source; the second source (Open-Meteo) supplies what the NWS grid does not carry
+  // (cloud layers, pressure) and every hour the grid does not cover (the two days before now, the tail of the week).
+  // Takes the NWS value field by field when it is a number, else the second source's. Never fabricates.
+  const PRIMARY_FIELDS = ['tempC', 'dewC', 'rh', 'windMs', 'gustMs', 'windDirDeg', 'cloudTotal', 'visM', 'precipMm', 'pblM'];
+  function mergePrimary(nws, second) {
+    const byMs = new Map((nws || []).map((r) => [r.ms, r]));
+    return second.map((o) => {
+      const n = byMs.get(o.ms);
+      if (!n) return o;
+      const out = Object.assign({}, o);
+      for (const f of PRIMARY_FIELDS) if (isNum(n[f])) out[f] = n[f];
+      if (isNum(n.dewC)) out.src = Object.assign({}, o.src, { weather: 'nws' });
+      // Layer cover cannot exceed total cover; the two sources are different models.
+      if (isNum(out.cloudTotal)) for (const k of ['cloudLow', 'cloudMid', 'cloudHigh']) if (isNum(out[k]) && out[k] > out.cloudTotal) out[k] = out.cloudTotal;
+      return out;
+    });
+  }
+
   /* ---------- view path ---------- */
 
   // The air between you and a distant subject matters more than the air at your feet. lists = hourly record arrays
@@ -675,15 +693,15 @@
     return f;
   }
 
-  // Lead time sets the tier; the NWS cross-check and the spread of the forecast ensemble (dew point, the biggest
+  // Lead time sets the tier; the second-source cross-check (Open-Meteo against the NWS primary) and the spread of the forecast ensemble (dew point, the biggest
   // clarity driver) each pull it down one step. ens = { loC, hiC } is the 10th to 90th percentile of ensemble members.
   function confidence(lead, r, second, ens) {
     let tier = lead <= 48 ? 2 : lead <= 96 ? 1 : 0;
     let note = lead <= 48 ? 'near-term forecast' : lead <= 96 ? 'forecast 2 to 4 days out' : 'forecast more than 4 days out';
     if (second && isNum(second.dewC) && isNum(r.dewC) && Math.abs(second.dewC - r.dewC) * 1.8 >= 5) {
-      tier -= 1; note += '; NWS dew point differs by 5°F or more';
+      tier -= 1; note += '; the second forecast source differs on dew point by 5°F or more';
     } else if (second && isNum(second.cloudTotal) && isNum(r.cloudTotal) && Math.abs(second.cloudTotal - r.cloudTotal) >= 40) {
-      tier -= 1; note += '; NWS cloud cover differs by 40 points or more';
+      tier -= 1; note += '; the second forecast source differs on cloud cover by 40 points or more';
     }
     if (ens && isNum(ens.loC) && isNum(ens.hiC)) {
       const spreadF = (ens.hiC - ens.loC) * 1.8;
@@ -855,6 +873,6 @@
     curve, bandLookup, loadProfile, bandOf, bandName,
     localParts, tzOffsetMs, zonedMidnight, nextDayKey,
     sunPosition, sunTimes, normCdf, buildClimatology, climoStats, dewPercentile,
-    mergeHourly, derive, score, aggregate, bestWindows, confidence, flagsFor,
+    mergeHourly, mergePrimary, derive, score, aggregate, bestWindows, confidence, flagsFor,
   };
 });

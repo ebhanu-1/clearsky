@@ -12,19 +12,21 @@ for (const zip of zips) {
   const t0 = Date.now();
   try {
     const place = await P.resolvePlace(zip);
-    const [fc, aq] = await Promise.all([P.fetchForecast(place), P.fetchAirQuality(place)]);
-    const hours = C.mergeHourly(fc.records, aq.records);
-    let climo = null, second = null;
+    const UA = { headers: { 'User-Agent': 'ClearSky/0.1 live-check (ebhanu@gmail.com)' } };
+    const [fc, aq, nws] = await Promise.all([P.fetchForecast(place), P.fetchAirQuality(place), P.fetchNwsHourly(place, UA)]);
+    // NWS is the primary weather; Open-Meteo fills cloud layers, pressure and the hours the NWS grid lacks.
+    const hours = C.mergeHourly(C.mergePrimary(nws.records, fc.records), aq.records);
+    const second = fc.records.map((r) => ({ ms: r.ms, t: r.t, dewC: r.dewC, cloudTotal: r.cloudTotal, visM: r.visM }));
+    const nwsHours = hours.filter((h) => h.src && h.src.weather === 'nws').length;
+    let climo = null;
     try { const s = await P.fetchClimateSeries(place, [2015, 2025]); climo = C.buildClimatology(s.timesMs, s.dewC, [2015, 2025]); } catch (e) { console.log('  climatology failed:', e.kind, e.message); }
-    try {
-      const nws = await P.fetchSecondOpinion(place, { headers: { 'User-Agent': 'ClearSky/0.1 live-check (ebhanu@gmail.com)' } });
-      second = nws.records;
-    } catch (e) { console.log('  NWS failed:', e.kind, e.message); }
     let ens = null, pathHours = null;
     try { ens = (await P.fetchEnsemble(place)).records; } catch (e) { failures++; console.log('  FAIL ensemble:', e.kind, e.message); }
     try {
       const path = await P.fetchPath(place, 45, 20);
-      const lists = [hours].concat(path.weather.map((w, i) => C.mergeHourly(w, path.air[i] || [])));
+      const nwsPts = await Promise.all(path.points.map((pt) => P.fetchNwsHourly(pt, UA).then((r) => r.records, () => [])));
+      if (nwsPts.some((l) => !l.length)) console.log('  note: NWS had no grid for a line-of-sight point; Open-Meteo used there');
+      const lists = [hours].concat(path.weather.map((w, i) => C.mergeHourly(C.mergePrimary(nwsPts[i], w), path.air[i] || [])));
       pathHours = C.mergePath(lists);
       if (pathHours.length !== hours.length) { failures++; console.log('  FAIL: path merge length'); }
     } catch (e) { failures++; console.log('  FAIL path:', e.kind, e.message); }
@@ -35,7 +37,9 @@ for (const zip of zips) {
     const gaps = hours.filter((h, i) => i && h.ms - hours[i - 1].ms !== 3600000).length;
     const nullAir = hours.filter((h) => h.pm25 == null).length;
     console.log(`\n${zip} ${place.name}, ${place.state}  (${place.lat.toFixed(3)}, ${place.lon.toFixed(3)}) tz=${place.tz} elev=${place.elevM}m  ${Date.now() - t0} ms`);
-    console.log(`  hours=${hours.length} gaps=${gaps} airNull=${nullAir} climo=${climo ? 'yes' : 'no'} nws=${second ? second.length + ' h' : 'no'}`);
+    console.log(`  hours=${hours.length} gaps=${gaps} airNull=${nullAir} climo=${climo ? 'yes' : 'no'} fromNws=${nwsHours} h, fromOpenMeteo=${hours.length - nwsHours} h`);
+    if (nwsHours < 100) { failures++; console.log('  FAIL: NWS supplied only ' + nwsHours + ' hours'); }
+    if (hours.some((h) => h.cloudLow == null || h.pressHpa == null)) { failures++; console.log('  FAIL: cloud layers or pressure missing after merge'); }
     if (gaps) { failures++; console.log('  FAIL: gaps in merged series'); }
     for (const p of C.PROFILES) {
       const sc = C.score(ctx, p, { derived, windPrior: C.windPriorFor(place) });

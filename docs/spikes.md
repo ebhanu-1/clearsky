@@ -47,3 +47,32 @@ identifies the request in the app. The Node live check sets a descriptive UA. NW
 Ensemble, multi-point forecast and SWPC Kp calls were checked with curl (CORS header, size, time); results are in
 docs/v2.md. All three answer `access-control-allow-origin: *`. Clarity now uses `heatShimmer`, `lowCloudClear` and
 `viewLight`, so its weights differ from the design doc's Profiles table (decision V5); golden scenarios 1 to 5 pass unchanged.
+
+## v2.1: NWS is the primary weather source (2026-11-07)
+
+Decisions D2 (primary weather: Open-Meteo) and D3 (second opinion: NWS) are **reversed**: the NWS forecast grid is now the
+primary and Open-Meteo is the second source. The owner wanted US government sources; this is the hybrid, because the
+rest of what the score needs has no browser-friendly government API (smoke and aerosol depth, the ensemble and ERA5
+history are GRIB2 files or European data, and decoding them needs a server, which the single static page does not have).
+
+| Data | Source now | Why |
+| --- | --- | --- |
+| Temperature, dew point, humidity, wind and gusts, total cloud, visibility, precipitation, mixing height | NWS gridpoints | Dense hourly layers, about 7.8 days, CORS open. Checked live 2026-11-07 (BOX/66,114): all of these non-null over 188 h. |
+| Time zone, elevation | NWS `/points` and the grid | Same two requests that feed the forecast, so zero extra calls; Open-Meteo answers outside NWS coverage. |
+| Cloud layers (low, mid, high), pressure | Open-Meteo | The NWS grid has no cloud layers and its `pressure` layer is empty. |
+| Hours before now (two days) and the tail of the week | Open-Meteo | The grid starts a few hours before now and ends about 7.8 days out. |
+| Smoke, PM2.5, aerosol depth, ensemble, ERA5, shot-log history, line-of-sight second points | Open-Meteo | No simple government equivalent. Unchanged. |
+| Kp | NOAA SWPC | Unchanged. |
+
+How it is built: `providers.normalizeNwsHourly` turns the grid into hourly records in the same shape as Open-Meteo's, and
+`core.mergePrimary` takes the NWS value field by field when it is a number and the Open-Meteo value otherwise. Layer cloud
+cover is capped at the NWS total. Open-Meteo's own dew point and cloud cover become `ctx.second`, so confidence still drops
+one step when the two sources disagree by 5°F of dew point or 40 points of cloud. If the NWS fails the app runs on
+Open-Meteo alone (banner warns); if Open-Meteo fails it runs on the NWS alone (cloud layers, air quality and pressure drop out and
+their factors renormalize away). Line-of-sight points get the same merge. NWS layer units are converted by the layer's own unit code.
+
+Measured on the recorded Andover week: the two sources differ by 2.3°F of dew point on average, and Clarity hour scores
+move by 6.4 points on average (test: `nws-primary.test.mjs`). Weights and curves are unchanged.
+
+Not verified: that NWS dew point is a better predictor of real clarity than Open-Meteo's (needs the shot log, M5). The 24-hour
+post-front signal compares NWS hours with Open-Meteo hours for the first day of the grid, a seam of about 2°F of noise.

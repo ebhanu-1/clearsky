@@ -328,7 +328,7 @@ body.has-tabs .wrap { padding-bottom: calc(92px + env(safe-area-inset-bottom)); 
       <svg width="34" height="34" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#173f77"/><circle cx="32" cy="38" r="12" fill="#f6c453"/><path d="M8 44h48" stroke="#fff" stroke-width="3" stroke-linecap="round"/><path d="M14 52h36" stroke="#8db4dc" stroke-width="3" stroke-linecap="round"/></svg>
       <div><h1>ClearSky</h1><p class="tag">Clear air for distant shots.</p></div>
     </div>
-    <span class="ver" id="ver" title="version 2.0 · built 2026-11-05 17:03 UTC">v2.0</span>
+    <span class="ver" id="ver" title="version 2.1 · built 2026-11-07 14:27 UTC">v2.1</span>
   </header>
 
   <form id="form" class="search" autocomplete="off" role="search">
@@ -346,8 +346,8 @@ body.has-tabs .wrap { padding-bottom: calc(92px + env(safe-area-inset-bottom)); 
   <noscript><p class="card">ClearSky needs JavaScript to fetch and score the forecast.</p></noscript>
 
   <footer>
-    <p>Scores are heuristics, tuned for New England dew-point and wind habits until you calibrate them in the shot log. A score is a guide to which hours deserve a closer look, not a promise. Forecast confidence comes from lead time, the spread of the forecast models and the NWS cross-check.</p>
-    <p>Data: <a href="https://open-meteo.com/" rel="noopener">Open-Meteo</a> forecast, ensemble, air quality and ERA5 reanalysis (Copernicus); <a href="https://www.swpc.noaa.gov/" rel="noopener">NOAA SWPC</a> Kp; <a href="https://www.weather.gov/" rel="noopener">NWS</a> cross-check; <a href="https://zippopotam.us/" rel="noopener">Zippopotam.us</a> and <a href="https://nominatim.org/" rel="noopener">OpenStreetMap Nominatim</a> for places. Free tiers are for personal, non-commercial use. Only coordinates leave your device; nothing is stored anywhere but this browser.</p>
+    <p>Scores are heuristics, tuned for New England dew-point and wind habits until you calibrate them in the shot log. A score is a guide to which hours deserve a closer look, not a promise. Forecast confidence comes from lead time, the spread of the forecast models and a cross-check between the NWS and Open-Meteo.</p>
+    <p>Data: <a href="https://www.weather.gov/" rel="noopener">National Weather Service</a> forecast grid for temperature, dew point, humidity, wind, cloud cover, visibility and rain; <a href="https://open-meteo.com/" rel="noopener">Open-Meteo</a> for cloud layers, air quality and smoke, the forecast ensemble, the cross-check and ERA5 reanalysis (Copernicus); <a href="https://www.swpc.noaa.gov/" rel="noopener">NOAA SWPC</a> Kp; <a href="https://zippopotam.us/" rel="noopener">Zippopotam.us</a> and <a href="https://nominatim.org/" rel="noopener">OpenStreetMap Nominatim</a> for places. Open-Meteo's free tier is for personal, non-commercial use. Only coordinates leave your device; nothing is stored anywhere but this browser.</p>
     <p><label>Wind direction prior <select id="windprior"><option value="auto">Auto (Northeast US only)</option><option value="neutral">Neutral</option><option value="northeast">Northeast tuned</option></select></label></p>
   </footer>
 </div>
@@ -741,6 +741,24 @@ body.has-tabs .wrap { padding-bottom: calc(92px + env(safe-area-inset-bottom)); 
     });
   }
 
+  // NWS is the primary weather source; the second source (Open-Meteo) supplies what the NWS grid does not carry
+  // (cloud layers, pressure) and every hour the grid does not cover (the two days before now, the tail of the week).
+  // Takes the NWS value field by field when it is a number, else the second source's. Never fabricates.
+  const PRIMARY_FIELDS = ['tempC', 'dewC', 'rh', 'windMs', 'gustMs', 'windDirDeg', 'cloudTotal', 'visM', 'precipMm', 'pblM'];
+  function mergePrimary(nws, second) {
+    const byMs = new Map((nws || []).map((r) => [r.ms, r]));
+    return second.map((o) => {
+      const n = byMs.get(o.ms);
+      if (!n) return o;
+      const out = Object.assign({}, o);
+      for (const f of PRIMARY_FIELDS) if (isNum(n[f])) out[f] = n[f];
+      if (isNum(n.dewC)) out.src = Object.assign({}, o.src, { weather: 'nws' });
+      // Layer cover cannot exceed total cover; the two sources are different models.
+      if (isNum(out.cloudTotal)) for (const k of ['cloudLow', 'cloudMid', 'cloudHigh']) if (isNum(out[k]) && out[k] > out.cloudTotal) out[k] = out.cloudTotal;
+      return out;
+    });
+  }
+
   /* ---------- view path ---------- */
 
   // The air between you and a distant subject matters more than the air at your feet. lists = hourly record arrays
@@ -1029,15 +1047,15 @@ body.has-tabs .wrap { padding-bottom: calc(92px + env(safe-area-inset-bottom)); 
     return f;
   }
 
-  // Lead time sets the tier; the NWS cross-check and the spread of the forecast ensemble (dew point, the biggest
+  // Lead time sets the tier; the second-source cross-check (Open-Meteo against the NWS primary) and the spread of the forecast ensemble (dew point, the biggest
   // clarity driver) each pull it down one step. ens = { loC, hiC } is the 10th to 90th percentile of ensemble members.
   function confidence(lead, r, second, ens) {
     let tier = lead <= 48 ? 2 : lead <= 96 ? 1 : 0;
     let note = lead <= 48 ? 'near-term forecast' : lead <= 96 ? 'forecast 2 to 4 days out' : 'forecast more than 4 days out';
     if (second && isNum(second.dewC) && isNum(r.dewC) && Math.abs(second.dewC - r.dewC) * 1.8 >= 5) {
-      tier -= 1; note += '; NWS dew point differs by 5°F or more';
+      tier -= 1; note += '; the second forecast source differs on dew point by 5°F or more';
     } else if (second && isNum(second.cloudTotal) && isNum(r.cloudTotal) && Math.abs(second.cloudTotal - r.cloudTotal) >= 40) {
-      tier -= 1; note += '; NWS cloud cover differs by 40 points or more';
+      tier -= 1; note += '; the second forecast source differs on cloud cover by 40 points or more';
     }
     if (ens && isNum(ens.loC) && isNum(ens.hiC)) {
       const spreadF = (ens.hiC - ens.loC) * 1.8;
@@ -1209,7 +1227,7 @@ body.has-tabs .wrap { padding-bottom: calc(92px + env(safe-area-inset-bottom)); 
     curve, bandLookup, loadProfile, bandOf, bandName,
     localParts, tzOffsetMs, zonedMidnight, nextDayKey,
     sunPosition, sunTimes, normCdf, buildClimatology, climoStats, dewPercentile,
-    mergeHourly, derive, score, aggregate, bestWindows, confidence, flagsFor,
+    mergeHourly, mergePrimary, derive, score, aggregate, bestWindows, confidence, flagsFor,
   };
 });
 
@@ -1343,14 +1361,23 @@ body.has-tabs .wrap { padding-bottom: calc(92px + env(safe-area-inset-bottom)); 
     } catch (e) { return { name: null, state: '' }; }
   }
 
-  // Time zone id (and elevation) for a coordinate, via a tiny Open-Meteo call.
+  // Time zone id and elevation for a coordinate. The NWS point lookup knows both for US locations and the same
+  // calls feed the forecast, so they are cached for it; Open-Meteo answers for anything the NWS does not cover.
   async function resolveTimezone(lat, lon) {
     const key = 'tz:' + lat.toFixed(2) + ',' + lon.toFixed(2);
     const hit = cache.get(key, null);
     if (hit) return hit.v;
-    const j = await http('https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon + '&daily=sunrise&forecast_days=1&timezone=auto', { retries: 1 });
-    if (!j || !j.timezone) throw new ProviderError('shape', 'No time zone in response');
-    const v = { tz: j.timezone, elevM: isNum(j.elevation) ? j.elevation : 0 };
+    let v = null;
+    try {
+      const g = await fetchNwsGrid({ lat, lon });
+      const e = g.json && g.json.properties && g.json.properties.elevation;
+      if (g.tz) v = { tz: g.tz, elevM: e && isNum(e.value) ? (/ft/.test(String(e.unitCode)) ? e.value * 0.3048 : e.value) : 0 };
+    } catch (err) { /* outside NWS coverage or unreachable: ask Open-Meteo */ }
+    if (!v) {
+      const j = await http('https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon + '&daily=sunrise&forecast_days=1&timezone=auto', { retries: 1 });
+      if (!j || !j.timezone) throw new ProviderError('shape', 'No time zone in response');
+      v = { tz: j.timezone, elevM: isNum(j.elevation) ? j.elevation : 0 };
+    }
     cache.set(key, v);
     return v;
   }
@@ -1457,15 +1484,18 @@ body.has-tabs .wrap { padding-bottom: calc(92px + env(safe-area-inset-bottom)); 
     if (!m) return 3600000;
     return ((+m[1] || 0) * 86400 + (+m[2] || 0) * 3600 + (+m[3] || 0) * 60) * 1000;
   }
-  function expandLayer(layer) {
+  // Expands a grid layer to one value per hour. spread=true divides each interval's value across its hours
+  // (accumulations such as precipitation); otherwise the value repeats (instantaneous readings).
+  function expandLayer(layer, spread) {
     const out = new Map();
     if (!layer || !Array.isArray(layer.values)) return out;
     for (const v of layer.values) {
       if (!isNum(v.value)) continue;
       const [start, dur] = String(v.validTime).split('/');
       const s = Date.parse(start);
-      const n = Math.min(Math.max(1, Math.round(durationMs(dur) / 3600000)), 24 * 7);
-      for (let i = 0; i < n; i++) out.set(s + i * 3600000, v.value);
+      if (!Number.isFinite(s)) continue;
+      const n = Math.min(Math.max(1, Math.round(durationMs(dur) / 3600000)), 24 * 8);
+      for (let i = 0; i < n; i++) out.set(s + i * 3600000, spread ? v.value / n : v.value);
     }
     return out;
   }
@@ -1481,19 +1511,73 @@ body.has-tabs .wrap { padding-bottom: calc(92px + env(safe-area-inset-bottom)); 
     }));
   }
 
+  // Unit conversion by the layer's own unit code, so a change of units upstream cannot silently skew a factor.
+  function layerSi(layer, kind) {
+    const u = String((layer && layer.uom) || '');
+    const k = {
+      temp: () => (/degF/.test(u) ? (v) => ((v - 32) * 5) / 9 : (v) => v),
+      speed: () => (/km_h/.test(u) ? (v) => v / 3.6 : /mi_h/.test(u) ? (v) => v * 0.44704 : /kt|knot/.test(u) ? (v) => v * 0.514444 : (v) => v),
+      length: () => (/:ft|foot/.test(u) ? (v) => v * 0.3048 : /:km/.test(u) ? (v) => v * 1000 : (v) => v),
+    }[kind];
+    return k ? k() : (v) => v;
+  }
+  const convertMap = (m, fn) => { for (const [k, v] of m) m.set(k, fn(v)); return m; };
+
+  // The full NWS grid as hourly records in the same shape as normalizeForecast. Fields the grid does not carry
+  // (cloud layers, pressure) stay null; core.mergePrimary fills them from the second source.
+  function normalizeNwsHourly(j) {
+    const p = j && j.properties;
+    if (!p) throw new ProviderError('shape', 'NWS grid response has no properties');
+    const L = {
+      temp: convertMap(expandLayer(p.temperature), layerSi(p.temperature, 'temp')),
+      dew: convertMap(expandLayer(p.dewpoint), layerSi(p.dewpoint, 'temp')),
+      rh: expandLayer(p.relativeHumidity), sky: expandLayer(p.skyCover), dir: expandLayer(p.windDirection),
+      wind: convertMap(expandLayer(p.windSpeed), layerSi(p.windSpeed, 'speed')),
+      gust: convertMap(expandLayer(p.windGust), layerSi(p.windGust, 'speed')),
+      vis: convertMap(expandLayer(p.visibility), layerSi(p.visibility, 'length')),
+      pbl: convertMap(expandLayer(p.mixingHeight), layerSi(p.mixingHeight, 'length')),
+      qpf: expandLayer(p.quantitativePrecipitation, true), // millimetres, spread over each interval's hours
+    };
+    const keys = [...new Set([...L.dew.keys(), ...L.temp.keys(), ...L.sky.keys()])].sort((a, b) => a - b);
+    if (!keys.length) throw new ProviderError('shape', 'NWS grid has no temperature, dew point or sky cover');
+    const g = (m, ms) => (m.has(ms) ? m.get(ms) : null);
+    return keys.map((ms) => ({
+      t: new Date(ms).toISOString(), ms,
+      tempC: g(L.temp, ms), dewC: g(L.dew, ms), rh: g(L.rh, ms),
+      windMs: g(L.wind, ms), gustMs: g(L.gust, ms), windDirDeg: g(L.dir, ms),
+      cloudTotal: g(L.sky, ms), cloudLow: null, cloudMid: null, cloudHigh: null,
+      visM: g(L.vis, ms), precipMm: g(L.qpf, ms), pressHpa: null, pblM: g(L.pbl, ms),
+      isDay: null, pm25: null, pm10: null, aod: null, dust: null, aqiUs: null,
+      src: { weather: 'nws', air: null },
+    }));
+  }
+
   // US only. Browsers refuse to set a custom User-Agent, and setting one would force a CORS preflight,
   // so the browser's own UA identifies the request. Node callers may pass opts.headers.
-  async function fetchSecondOpinion(place, opts) {
+  async function fetchNwsGrid(place, opts) {
     const headers = (opts && opts.headers) || undefined;
-    const kp = 'nws:grid:' + ckey(place);
-    let gridUrl = (cache.get(kp, 24 * 3600000) || {}).v;
-    if (!gridUrl) {
-      const pts = await http('https://api.weather.gov/points/' + place.lat.toFixed(4) + ',' + place.lon.toFixed(4), { retries: 1, headers });
-      gridUrl = pts && pts.properties && pts.properties.forecastGridData;
+    const kp = 'nws:pt:' + ckey(place);
+    let pt = (cache.get(kp, 24 * 3600000) || {}).v;
+    if (!pt) {
+      const j = await http('https://api.weather.gov/points/' + place.lat.toFixed(4) + ',' + place.lon.toFixed(4), { retries: 1, headers });
+      const gridUrl = j && j.properties && j.properties.forecastGridData;
       if (!gridUrl) throw new ProviderError('shape', 'NWS /points gave no forecastGridData');
-      cache.set(kp, gridUrl);
+      pt = { grid: gridUrl, tz: j.properties.timeZone || null };
+      cache.set(kp, pt);
     }
-    const res = await cachedJson('nws:' + ckey(place), 60 * 60000, gridUrl, { retries: 1, timeoutMs: 10000, headers });
+    const res = await cachedJson('nws:' + ckey(place), 60 * 60000, pt.grid, { retries: 1, timeoutMs: 10000, headers });
+    return Object.assign({ tz: pt.tz }, res);
+  }
+
+  // Primary weather: the NWS forecast grid (forecaster-edited NBM). Throws when the point is outside NWS coverage.
+  async function fetchNwsHourly(place, opts) {
+    const res = await fetchNwsGrid(place, opts);
+    return { records: normalizeNwsHourly(res.json), at: res.at, fromCache: res.fromCache, stale: !!res.stale, error: res.error || null };
+  }
+
+  // Dew point, sky cover and visibility only; kept for callers that want the lightweight series.
+  async function fetchSecondOpinion(place, opts) {
+    const res = await fetchNwsGrid(place, opts);
     return { records: normalizeNwsGrid(res.json), at: res.at, fromCache: res.fromCache };
   }
 
@@ -1583,8 +1667,8 @@ body.has-tabs .wrap { padding-bottom: calc(92px + env(safe-area-inset-bottom)); 
   return {
     pathPoints, fetchPath, reduceEnsemble, fetchEnsemble, fetchKp,
     ProviderError, cache, http, zipOk, parseLatLon, geocodeZip, reverseName, resolveTimezone, resolvePlace,
-    normalizeForecast, normalizeAir, normalizeNwsGrid, durationMs, expandLayer,
-    fetchForecast, fetchAirQuality, fetchClimateSeries, fetchSecondOpinion, fetchPast, FORECAST_VARS, AIR_VARS,
+    normalizeForecast, normalizeAir, normalizeNwsGrid, normalizeNwsHourly, durationMs, expandLayer,
+    fetchForecast, fetchAirQuality, fetchClimateSeries, fetchSecondOpinion, fetchNwsHourly, fetchPast, FORECAST_VARS, AIR_VARS,
   };
 });
 
@@ -1902,7 +1986,7 @@ body.has-tabs .wrap { padding-bottom: calc(92px + env(safe-area-inset-bottom)); 
     if (!input) return;
     const id = ++S.loadId;
     S.loading = true; S.error = null; S.notes = []; S.climo = null; S.second = null; S.ens = null; S.kp = null; S.pathHours = null;
-    S.climoState = 'loading'; S.nwsState = 'loading'; S.ensState = 'loading'; S.pathState = 'idle';
+    S.climoState = 'loading'; S.nwsState = 'idle'; S.ensState = 'loading'; S.pathState = 'idle';
     render();
     let place;
     try { place = await P.resolvePlace(input); }
@@ -1910,24 +1994,37 @@ body.has-tabs .wrap { padding-bottom: calc(92px + env(safe-area-inset-bottom)); 
     if (id !== S.loadId) return;
     S.place = place; S.input = input;
 
-    const fcP = P.fetchForecast(place);
+    // NWS is the primary weather; Open-Meteo supplies cloud layers, pressure, air quality and any hour the NWS grid lacks.
+    const fcP = P.fetchForecast(place).then((r) => r, (e) => ({ error: e, records: [] }));
+    const nwsP = P.fetchNwsHourly(place).then((r) => r, (e) => ({ error: e, records: [] }));
     const aqP = P.fetchAirQuality(place).then((r) => r, (e) => ({ error: e, records: [] }));
     loadClimo(place).then((c) => { if (id !== S.loadId) return; S.climo = c; S.climoState = 'ok'; refine(); }, () => { if (id === S.loadId) { S.climoState = 'failed'; render(); } });
-    P.fetchSecondOpinion(place).then((r) => { if (id !== S.loadId) return; S.second = r.records; S.nwsState = 'ok'; refine(); }, () => { if (id === S.loadId) { S.nwsState = 'failed'; render(); } });
     P.fetchEnsemble(place).then((r) => { if (id !== S.loadId) return; S.ens = r.records; S.ensState = 'ok'; refine(); }, () => { if (id === S.loadId) { S.ensState = 'failed'; render(); } });
     P.fetchKp().then((k) => { if (id === S.loadId) { S.kp = k; if (S.hours) renderSun(); } }, () => { /* aurora hint is optional */ });
 
-    let fc;
-    try { fc = await fcP; } catch (e) { if (id === S.loadId) fail(e, input); return; }
+    const [fc0, nws] = await Promise.all([fcP, nwsP]);
     if (id !== S.loadId) return;
+    const haveNws = nws.records.length > 0;
+    let fc = fc0;
+    if (!fc.records.length) {
+      // Open-Meteo is down: the NWS grid alone still scores (cloud layers and pressure drop out).
+      if (!haveNws) { fail(fc.error || nws.error, input); return; }
+      fc = { records: nws.records, at: nws.at, fromCache: nws.fromCache, stale: false, degraded: true };
+    }
     const aq = await aqP;
     if (id !== S.loadId) return;
 
-    S.hours = C.mergeHourly(fc.records, aq.records || []);
+    S.nwsState = haveNws ? 'ok' : 'failed';
+    // The second source cross-checks the primary: confidence drops when the two disagree on dew point or cloud cover.
+    S.second = haveNws && !fc.degraded ? fc.records.map((r) => ({ ms: r.ms, t: r.t, dewC: r.dewC, cloudTotal: r.cloudTotal, visM: r.visM })) : null;
+    S.hours = C.mergeHourly(haveNws ? C.mergePrimary(nws.records, fc.records) : fc.records, aq.records || []);
     S.hourByMs = new Map(S.hours.map((r) => [r.ms, r]));
-    S.updatedAt = fc.at;
-    if (fc.stale) S.notes.push({ kind: 'warn', text: "Couldn't reach Open-Meteo. Showing the saved forecast from " + F.ageLabel(fc.at, Date.now()) + '.' });
-    else if (fc.fromCache && Date.now() - fc.at > 3 * 3600000) S.notes.push({ kind: 'warn', text: 'Forecast is ' + F.ageLabel(fc.at, Date.now()).replace(' ago', '') + ' old.' });
+    S.updatedAt = haveNws ? nws.at : fc.at;
+    if (fc.degraded) S.notes.push({ kind: 'warn', text: "Couldn't reach Open-Meteo. Scores use the NWS forecast alone: cloud layers, air quality and forecast spread are missing." });
+    else if (fc.stale) S.notes.push({ kind: 'warn', text: "Couldn't reach Open-Meteo. Using its saved forecast from " + F.ageLabel(fc.at, Date.now()) + ' for cloud layers and the hours the NWS lacks.' });
+    if (haveNws && nws.stale) S.notes.push({ kind: 'warn', text: "Couldn't reach the NWS. Showing its saved forecast from " + F.ageLabel(nws.at, Date.now()) + '.' });
+    else if (haveNws && nws.fromCache && Date.now() - nws.at > 3 * 3600000) S.notes.push({ kind: 'warn', text: 'Forecast is ' + F.ageLabel(nws.at, Date.now()).replace(' ago', '') + ' old.' });
+    else if (!haveNws && fc.fromCache && Date.now() - fc.at > 3 * 3600000) S.notes.push({ kind: 'warn', text: 'Forecast is ' + F.ageLabel(fc.at, Date.now()).replace(' ago', '') + ' old.' });
     if (!aq.records || !aq.records.length) S.notes.push({ kind: 'warn', text: 'Partial: smoke and particulates are not included, so scores use the remaining factors.' });
     else if (!aq.records.some((r) => r.pm25 != null)) S.notes.push({ kind: 'warn', text: 'Partial: no air-quality data for this location.' });
     S.nowMs = Math.floor(Date.now() / HOUR) * HOUR;
@@ -1960,9 +2057,11 @@ body.has-tabs .wrap { padding-bottom: calc(92px + env(safe-area-inset-bottom)); 
     if (S.bearing == null || !S.place || !S.hours) { S.pathHours = null; S.pathState = 'idle'; return; }
     S.pathState = 'loading'; renderBanner();
     try {
-      const p = await P.fetchPath(S.place, S.bearing, C.DISTANCE[S.distance].miles);
+      const miles = C.DISTANCE[S.distance].miles;
+      const nwsPts = P.pathPoints(S.place, S.bearing, miles).map((pt) => P.fetchNwsHourly(pt).then((r) => r.records, () => []));
+      const [p, nwsLists] = await Promise.all([P.fetchPath(S.place, S.bearing, miles), Promise.all(nwsPts)]);
       if (tok !== S.pathTok) return;
-      const lists = [S.hours].concat(p.weather.map((w, i) => C.mergeHourly(w, p.air[i] || [])));
+      const lists = [S.hours].concat(p.weather.map((w, i) => C.mergeHourly(C.mergePrimary(nwsLists[i], w), p.air[i] || [])));
       S.pathHours = C.mergePath(lists);
       S.pathState = 'ok';
     } catch (e) {
@@ -2139,11 +2238,11 @@ body.has-tabs .wrap { padding-bottom: calc(92px + env(safe-area-inset-bottom)); 
     const el = clear($('#banner'));
     const notes = S.notes.slice();
     if (S.hours && S.climoState === 'failed') notes.push({ kind: 'info', text: 'Climate comparison unavailable; dew point uses its absolute scale only.' });
-    if (S.hours && S.nwsState === 'failed') notes.push({ kind: 'info', text: 'NWS cross-check unavailable; confidence uses forecast lead time only.' });
+    if (S.hours && S.nwsState === 'failed') notes.push({ kind: 'warn', text: "Couldn't reach the NWS, so weather comes from Open-Meteo alone and confidence has no second source." });
     if (S.hours && S.ensState === 'failed') notes.push({ kind: 'info', text: 'Forecast-spread data unavailable; confidence uses lead time only.' });
     if (S.hours && S.pathState === 'failed') notes.push({ kind: 'warn', text: "Couldn't load weather along your line of sight, so Clarity uses your spot only." });
     if (S.hours && S.pathState === 'loading') notes.push({ kind: 'info', text: 'Checking the air along your line of sight…' });
-    else if (S.hours && (S.climoState === 'loading' || S.nwsState === 'loading' || S.ensState === 'loading')) notes.push({ kind: 'info', text: 'Refining with climate history, forecast spread and the NWS cross-check…' });
+    else if (S.hours && (S.climoState === 'loading' || S.ensState === 'loading')) notes.push({ kind: 'info', text: 'Refining with climate history and forecast spread…' });
     for (const n of notes) el.appendChild(h('div', { class: 'banner ' + n.kind, role: n.kind === 'warn' ? 'status' : null }, n.text));
   }
 
@@ -2762,7 +2861,7 @@ body.has-tabs .wrap { padding-bottom: calc(92px + env(safe-area-inset-bottom)); 
     const secondBy = new Map((S.second || []).map((r) => [r.ms, r]));
     const rows = S.hours.filter((r) => C.localParts(r.ms, tz()).date === S.day);
     const sc = new Map((S.scores[S.profileId] || []).map((x) => [x.ms, x]));
-    const cols = ['Time', 'Temp', 'Dew', 'NWS dew', 'RH', 'Wind', 'Cloud L/M/H', 'Vis', 'PM2.5', 'AOD', 'Rain', profile().name];
+    const cols = ['Time', 'Temp', 'Dew', 'Dew 2nd', 'RH', 'Wind', 'Cloud L/M/H', 'Vis', 'PM2.5', 'AOD', 'Rain', profile().name];
     const table = h('table', { class: 'raw' },
       h('thead', null, h('tr', null, cols.map((c) => h('th', { scope: 'col' }, c)))),
       h('tbody', null, rows.map((r) => {
@@ -2776,6 +2875,7 @@ body.has-tabs .wrap { padding-bottom: calc(92px + env(safe-area-inset-bottom)); 
           h('td', { class: x && x.scored ? 'sc band-' + x.band : '' }, x && x.scored ? String(Math.round(x.score)) : '–'));
       })));
     el.appendChild(h('div', { class: 'tablewrap', tabindex: '0', role: 'region', 'aria-label': 'Raw hourly table' }, table));
+    el.appendChild(h('p', { class: 'muted small' }, 'Temp, dew, humidity, wind, total cloud, visibility, rain: NWS where available, else Open-Meteo. Dew 2nd is the other source, used for the confidence check. Cloud layers, air quality: Open-Meteo.'));
   }
 
   /* ---------- shot log ---------- */
@@ -2892,7 +2992,7 @@ body.has-tabs .wrap { padding-bottom: calc(92px + env(safe-area-inset-bottom)); 
   /* ---------- versioning, self-update, offline launch ----------
      Same protocol as Studio Phone: the service worker serves the cached page first; the live-version probe (?u=)
      and the update load (?v=) always go to the network. Every build bumps VERSION (build.mjs). */
-  const APP_VERSION = 'v2.0';
+  const APP_VERSION = 'v2.1';
   async function checkForUpdate(auto, manual) {
     const bar = $('#updatebar');
     const say = (t) => { if (!bar) return; clear(bar); if (t) bar.appendChild(h('div', { class: 'banner info', role: 'status' }, t)); };

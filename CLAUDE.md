@@ -2,7 +2,8 @@
 
 Single-file, mobile-first web app that answers one question for distant landscape photographers: will the air be clear
 enough for sharp, clean far shots, and when and which way should I shoot? Scores hourly conditions for any US zip code
-from Open-Meteo weather, air quality, ensemble spread and ERA5 history, with an NWS cross-check. Clarity is the primary
+from the NWS forecast grid (primary weather), with Open-Meteo for cloud layers, air quality, ensemble spread, ERA5 history and a
+second-source cross-check. Clarity is the primary
 profile (subject distance, view direction, line of sight); five other shoot types are secondary.
 The design doc is docs/design.md (export of the "Photo Clarity App" spec): Design decisions D1-D22, Data and history,
 Scoring and profiles, Build plan. docs/spikes.md records live API results and where the build departs from the doc. docs/v2.md is the v2.0 assessment,
@@ -27,8 +28,8 @@ Source doc: https://claude.ai/artifact/81eMqtWrzcZwTudCqTHvEd
 ## Layout
 - src/core.js       pure scoring engine: curves, sun position, derived features, 17 factors, 6 profiles, windows, subject
                     distance, view path merge, sun-vs-view direction, air-mass outlook, moon and aurora helpers
-- src/providers.js  network adapters, typed ProviderError, localStorage cache, retry and timeout rules; line-of-sight points,
-                    forecast ensemble, SWPC Kp
+- src/providers.js  network adapters, typed ProviderError, localStorage cache, retry and timeout rules; NWS hourly grid (primary),
+                    line-of-sight points, forecast ensemble, SWPC Kp
 - src/format.js     unit formatting, time labels, plain-language reasons, field notes, verdicts, .ics reminders
 - src/app.js        UI (DOM built with textContent only; tabs Plan / Day / Layers / More), src/style.css, src/index.template.html
 - test/             node:test suites; fixtures in test/fixtures; golden scenarios mirror the Build plan
@@ -45,7 +46,9 @@ Source doc: https://claude.ai/artifact/81eMqtWrzcZwTudCqTHvEd
   profiles are extras. Distance and direction are named choices in the UI; their numbers live in core.js (DISTANCE, CURVES).
 - Mobile first: design at 375 px, tap targets 44 px or more, desktop is the same layout with room.
 - UI: light background, one HTML file, no runtime CDN. Build must stay under 200 KB gzipped.
-- Ask before changing any decision D1-D22. Deviations so far are listed in docs/spikes.md.
+- Weather source order: NWS grid first (core.mergePrimary), Open-Meteo for what the grid lacks (cloud layers, pressure, the
+  two past days, the tail of the week) and as the cross-check behind confidence.
+- Ask before changing any decision D1-D22. Deviations so far are listed in docs/spikes.md (D2 and D3 were reversed in v2.1).
 
 ## Definition of done
 Tests green, `npm run build` green, `npm run live` shows all four zips scoring with no gaps (it also exercises the ensemble, line-of-sight path and Kp calls),
